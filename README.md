@@ -35,6 +35,12 @@ quebrar reprova o PR sozinha.
 memoria, dados ficticios e um aviso permanente no topo. Nada e salvo. Serve para
 conhecer as telas antes de provisionar o projeto.
 
+### Publicacao
+
+`netlify.toml` ja traz a reescrita de SPA — sem ela, recarregar em `/faturamento`
+devolve 404, porque o roteamento e do react-router, no cliente. Build
+`npm run build`, publicar `dist/`.
+
 ### Com Supabase
 
 ```bash

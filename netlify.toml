@@ -1,0 +1,23 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# O roteamento e do react-router, no cliente. Sem esta reescrita, recarregar a
+# pagina em /faturamento ou abrir um link direto para /glosas devolve 404 —
+# o servidor procura um arquivo que nao existe.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # dado de saude nao vai para buscador
+    X-Robots-Tag = "noindex, nofollow"
