@@ -129,6 +129,47 @@ ok(!/[^\x00-\xff]/.test(xml), 'nenhum caractere fora da tabela latin1')
 corpo = await p.locator('body').innerText()
 ok(/Lote 41/.test(corpo), 'lote registrado no historico com numeracao sequencial')
 
+// ---- criterio 12: PDF de producao do dia ---------------------------------
+const pdf = await Promise.all([
+  p.waitForEvent('download'),
+  p.getByRole('button', { name: 'PDF' }).first().click(),
+]).then(([d]) => d)
+const bytesPdf = readFileSync(await pdf.path())
+ok(/^producao-\d{4}-\d{2}-\d{2}\.pdf$/.test(pdf.suggestedFilename()),
+   `criterio 12: PDF do dia baixado como ${pdf.suggestedFilename()}`)
+ok(bytesPdf.subarray(0, 5).toString() === '%PDF-' && bytesPdf.length > 2000,
+   'criterio 12: PDF valido e nao vazio')
+const textoPdf = bytesPdf.toString('latin1')
+ok(!/nao faturavel/i.test(textoPdf), 'criterio 12: PQA nunca rotulado como nao faturavel')
+
+// ---- planilha ------------------------------------------------------------
+const xlsx = await Promise.all([
+  p.waitForEvent('download'),
+  p.getByRole('button', { name: 'Planilha XLSX' }).click(),
+]).then(([d]) => d)
+const bytesXlsx = readFileSync(await xlsx.path())
+ok(bytesXlsx.subarray(0, 2).toString() === 'PK' && bytesXlsx.length > 3000,
+   `planilha gerada (${xlsx.suggestedFilename()})`)
+
+// ---- criterio 13: conciliacao --------------------------------------------
+await irPara('Conciliacao')
+await p.locator('textarea').first().fill(
+  [
+    'Senha;Codigo;Valor Apresentado;Valor Pago',
+    '444555;31009166;148,00;148,00',
+    '666777;31009093;100,00;100,00',
+    '000111;31005470;1056,78;1056,78',
+  ].join('\n'),
+)
+await p.waitForTimeout(400)
+corpo = await p.locator('body').innerText()
+ok(/CONFEREM\n?1|Conferem/i.test(corpo), 'criterio 13: conciliacao separa o que confere')
+ok(/DIVERGEM NO VALOR \(1\)/i.test(corpo), 'criterio 13: conciliacao separa o que diverge no valor')
+ok(/NAO ENCONTRADOS NO RELATORIO \([1-9]/i.test(corpo),
+   'criterio 13: conciliacao mostra a producao que nunca chegou ao relatorio')
+ok(/NAO ENCONTRADOS NO BANCO \(1\)/i.test(corpo),
+   'criterio 13: conciliacao mostra o que o relatorio traz e o banco nao conhece')
+
 console.log(erros.length ? 'ERROS DE PAGINA:\n' + erros.join('\n') : 'sem erros de pagina')
 await b.close()
 process.exit(falhas > 0 || erros.length > 0 ? 1 : 0)
