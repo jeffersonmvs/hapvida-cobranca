@@ -10,7 +10,7 @@
 -- contador, mas o gerador de XML TISS os bloqueia ate receberem codigo real.
 -- =====================================================================
 
-insert into procedimentos
+insert into faturamento.procedimentos
   (codigo_tuss, descricao, valor_cobrar, valor_pago, glosa_recorrente, confianca,
    exige_tela, exige_retalho, termos_exigidos, equivalente_a, codigo_interno,
    pequena_cirurgia, observacao, vigencia_inicio)

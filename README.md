@@ -70,6 +70,21 @@ supabase functions deploy extrair-documento analisar-risco \
                           normalizar-glosas redigir-recurso
 ```
 
+**Depois do `db push`, um ajuste obrigatorio no painel:**
+`Settings > API > Exposed schemas` precisa listar `faturamento`. Sem isso o
+PostgREST nao enxerga nenhuma tabela e o app so mostra erro de permissao.
+
+### Por que um schema proprio
+
+O projeto Supabase pode hospedar mais de um sistema. Se `public` ja tiver
+tabelas `pacientes` ou `atendimentos` de outro app, criar as nossas ali
+colidiria - na melhor hipotese a migration falha, na pior dois sistemas passam
+a gravar na mesma tabela. Por isso tudo vive em `faturamento`, e o bucket de
+Storage (que e global ao projeto) se chama `faturamento-documentos`.
+
+O schema tambem facilita o que o faturamento exige na pratica: exportar ou
+fazer backup so dos dados fiscais, sem arrastar o resto junto.
+
 A **chave da API de IA nunca vai ao navegador**. Toda chamada passa por Edge
 Function autenticada (`supabase/functions/`), que tambem grava a trilha em
 `analises_ia` com modelo e versao de prompt.

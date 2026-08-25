@@ -6,11 +6,24 @@
 create extension if not exists "pgcrypto";
 
 -- ---------------------------------------------------------------------
+-- Schema proprio.
+--
+-- Este projeto Supabase hospeda mais de um sistema: 'public' ja tem
+-- pacientes, atendimentos, triagens, pn_* e portal_*, e existe um schema
+-- 'parecer'. Criar 'pacientes' e 'atendimentos' em public colidiria com
+-- dados de outro app - por isso o faturamento vive num schema so dele.
+--
+-- Depois de aplicar: Settings > API > Exposed schemas precisa listar
+-- 'faturamento', senao o PostgREST nao enxerga estas tabelas.
+-- ---------------------------------------------------------------------
+create schema if not exists faturamento;
+
+-- ---------------------------------------------------------------------
 -- Configuracao do prestador. Linha unica (id = 1).
 -- CNES fica PENDENTE ate ser informado; a geracao do XML TISS e
 -- bloqueada enquanto isso (ver src/domain/tiss.ts).
 -- ---------------------------------------------------------------------
-create table configuracao (
+create table faturamento.configuracao (
   id                     int primary key default 1 check (id = 1),
   nome_prestador         text not null default 'JEFFERSON MENEZES VIANA SANTOS',
   crm                    text not null default '11153',
@@ -26,13 +39,13 @@ create table configuracao (
   atualizado_em          timestamptz default now()
 );
 
-insert into configuracao (id) values (1) on conflict do nothing;
+insert into faturamento.configuracao (id) values (1) on conflict do nothing;
 
 -- ---------------------------------------------------------------------
 -- Tabela de referencia de honorarios. Versionada por vigencia:
 -- editar valor_cobrar cria NOVA vigencia, nunca sobrescreve (regra 10).
 -- ---------------------------------------------------------------------
-create table procedimentos (
+create table faturamento.procedimentos (
   id               uuid primary key default gen_random_uuid(),
   codigo_tuss      text not null,
   descricao        text not null,
@@ -56,21 +69,21 @@ create table procedimentos (
 );
 
 create unique index procedimentos_codigo_vigencia_idx
-  on procedimentos (codigo_tuss, vigencia_inicio);
-create index procedimentos_codigo_idx on procedimentos (codigo_tuss);
+  on faturamento.procedimentos (codigo_tuss, vigencia_inicio);
+create index procedimentos_codigo_idx on faturamento.procedimentos (codigo_tuss);
 
-create table pacientes (
+create table faturamento.pacientes (
   id           uuid primary key default gen_random_uuid(),
   nome         text not null,
   carteira     text,
   cpf          text,
   created_at   timestamptz default now()
 );
-create index pacientes_nome_idx on pacientes (lower(nome));
+create index pacientes_nome_idx on faturamento.pacientes (lower(nome));
 
-create table atendimentos (
+create table faturamento.atendimentos (
   id              uuid primary key default gen_random_uuid(),
-  paciente_id     uuid references pacientes(id),
+  paciente_id     uuid references faturamento.pacientes(id),
   numero          text not null unique,   -- no do atendimento/guia, ex. 188912993
   data            date not null,
   hora_inicio     time,
@@ -84,11 +97,11 @@ create table atendimentos (
   observacao      text,
   created_at      timestamptz default now()
 );
-create index atendimentos_data_idx on atendimentos (data);
+create index atendimentos_data_idx on faturamento.atendimentos (data);
 
-create table procedimentos_realizados (
+create table faturamento.procedimentos_realizados (
   id                  uuid primary key default gen_random_uuid(),
-  atendimento_id      uuid references atendimentos(id) on delete cascade,
+  atendimento_id      uuid references faturamento.atendimentos(id) on delete cascade,
   codigo_tuss         text not null,
   senha               text not null,      -- CADA SITIO TEM SENHA PROPRIA
   valor_cobrado       numeric(10,2) not null,
@@ -107,13 +120,13 @@ create table procedimentos_realizados (
   faturado_em         timestamptz,        -- marcado na tela de digitacao assistida (SAVI)
   created_at          timestamptz default now()
 );
-create index proc_realizados_atendimento_idx on procedimentos_realizados (atendimento_id);
-create index proc_realizados_situacao_idx on procedimentos_realizados (situacao);
-create index proc_realizados_senha_idx on procedimentos_realizados (senha);
+create index proc_realizados_atendimento_idx on faturamento.procedimentos_realizados (atendimento_id);
+create index proc_realizados_situacao_idx on faturamento.procedimentos_realizados (situacao);
+create index proc_realizados_senha_idx on faturamento.procedimentos_realizados (senha);
 
-create table glosas (
+create table faturamento.glosas (
   id              uuid primary key default gen_random_uuid(),
-  procedimento_realizado_id uuid references procedimentos_realizados(id) on delete set null,
+  procedimento_realizado_id uuid references faturamento.procedimentos_realizados(id) on delete set null,
   codigo_tuss     text,                   -- redundante de proposito: glosa importada
   competencia     text not null,          -- 'MEDISA 03/2026'
   valor_glosado   numeric(10,2) not null,
@@ -128,10 +141,10 @@ create table glosas (
   resultado       text,
   created_at      timestamptz default now()
 );
-create index glosas_competencia_idx on glosas (competencia);
-create index glosas_prazo_idx on glosas (prazo_recurso);
+create index glosas_competencia_idx on faturamento.glosas (competencia);
+create index glosas_prazo_idx on faturamento.glosas (prazo_recurso);
 
-create table consultas (
+create table faturamento.consultas (
   id            uuid primary key default gen_random_uuid(),
   data          date not null,
   unidade       text not null,
@@ -140,11 +153,11 @@ create table consultas (
   valor_unitario numeric(10,2) not null default 60.00,
   created_at    timestamptz default now()
 );
-create index consultas_data_idx on consultas (data);
+create index consultas_data_idx on faturamento.consultas (data);
 
-create table documentos (
+create table faturamento.documentos (
   id              uuid primary key default gen_random_uuid(),
-  atendimento_id  uuid references atendimentos(id) on delete set null,
+  atendimento_id  uuid references faturamento.atendimentos(id) on delete set null,
   tipo            text check (tipo in ('boletim','ficha','guia','outro')),
   storage_path    text not null,
   hash_arquivo    text,                   -- dedupe de foto repetida
@@ -156,12 +169,12 @@ create table documentos (
   expurgado_em    timestamptz,            -- imagem original apagada pela politica de retencao
   created_at      timestamptz default now()
 );
-create unique index documentos_hash_idx on documentos (hash_arquivo) where hash_arquivo is not null;
-create index documentos_status_idx on documentos (extracao_status);
+create unique index documentos_hash_idx on faturamento.documentos (hash_arquivo) where hash_arquivo is not null;
+create index documentos_status_idx on faturamento.documentos (extracao_status);
 
-create table alertas (
+create table faturamento.alertas (
   id              uuid primary key default gen_random_uuid(),
-  procedimento_realizado_id uuid references procedimentos_realizados(id) on delete cascade,
+  procedimento_realizado_id uuid references faturamento.procedimentos_realizados(id) on delete cascade,
   regra           text not null,
   severidade      text check (severidade in ('critico','atencao','info')),
   mensagem        text not null,
@@ -170,11 +183,11 @@ create table alertas (
   resolvido       boolean default false,
   created_at      timestamptz default now()
 );
-create index alertas_proc_idx on alertas (procedimento_realizado_id);
-create index alertas_abertos_idx on alertas (resolvido, severidade);
+create index alertas_proc_idx on faturamento.alertas (procedimento_realizado_id);
+create index alertas_abertos_idx on faturamento.alertas (resolvido, severidade);
 
 -- Trilha de auditoria de tudo que a IA produziu. Obrigatoria.
-create table analises_ia (
+create table faturamento.analises_ia (
   id            uuid primary key default gen_random_uuid(),
   tipo          text not null check (tipo in ('extracao','risco_glosa','padrao','recurso','redacao')),
   referencia_id uuid,                     -- documento, procedimento ou glosa
@@ -187,12 +200,12 @@ create table analises_ia (
   editada       boolean,
   created_at    timestamptz default now()
 );
-create index analises_ia_ref_idx on analises_ia (tipo, referencia_id);
+create index analises_ia_ref_idx on faturamento.analises_ia (tipo, referencia_id);
 
 -- ---------------------------------------------------------------------
 -- Lotes TISS: numeracao sequencial de lote e de guia controlada no banco.
 -- ---------------------------------------------------------------------
-create table lotes_tiss (
+create table faturamento.lotes_tiss (
   id                uuid primary key default gen_random_uuid(),
   numero_lote       bigint not null unique,
   competencia       text not null,          -- 'MEDISA 08/2026'
@@ -207,33 +220,33 @@ create table lotes_tiss (
   observacao        text
 );
 
-create table lote_guias (
+create table faturamento.lote_guias (
   id             uuid primary key default gen_random_uuid(),
-  lote_id        uuid references lotes_tiss(id) on delete cascade,
-  atendimento_id uuid references atendimentos(id) on delete set null,
+  lote_id        uuid references faturamento.lotes_tiss(id) on delete cascade,
+  atendimento_id uuid references faturamento.atendimentos(id) on delete set null,
   numero_guia    bigint not null,
   valor          numeric(10,2) not null
 );
-create index lote_guias_lote_idx on lote_guias (lote_id);
+create index lote_guias_lote_idx on faturamento.lote_guias (lote_id);
 
 -- Sequencias de numeracao. Consumidas por rpc proximo_numero().
-create table contadores (
+create table faturamento.contadores (
   chave  text primary key,   -- 'lote' | 'guia'
   valor  bigint not null default 0
 );
-insert into contadores (chave, valor) values ('lote', 0), ('guia', 0)
+insert into faturamento.contadores (chave, valor) values ('lote', 0), ('guia', 0)
   on conflict do nothing;
 
-create or replace function proximo_numero(p_chave text, p_quantidade int default 1)
+create or replace function faturamento.proximo_numero(p_chave text, p_quantidade int default 1)
 returns bigint
 language plpgsql
 security definer
-set search_path = public
+set search_path = faturamento
 as $$
 declare
   v_novo bigint;
 begin
-  update contadores set valor = valor + p_quantidade
+  update faturamento.contadores set valor = valor + p_quantidade
    where chave = p_chave
    returning valor into v_novo;
   if v_novo is null then
@@ -243,3 +256,19 @@ begin
   return v_novo - p_quantidade + 1;
 end;
 $$;
+
+-- ---------------------------------------------------------------------
+-- Permissoes do schema. Em 'public' o Supabase concede isto sozinho; num
+-- schema proprio e preciso conceder na mao, ou o PostgREST devolve
+-- "permission denied" antes mesmo da RLS entrar.
+--
+-- anon recebe apenas usage: chega a enxergar o schema, nao as tabelas.
+-- Quem le e escreve e o usuario autenticado, e ainda passando pela RLS.
+-- ---------------------------------------------------------------------
+grant usage on schema faturamento to anon, authenticated, service_role;
+grant all on all tables in schema faturamento to authenticated, service_role;
+grant all on all sequences in schema faturamento to authenticated, service_role;
+alter default privileges in schema faturamento
+  grant all on tables to authenticated, service_role;
+alter default privileges in schema faturamento
+  grant all on sequences to authenticated, service_role;

@@ -1,4 +1,4 @@
-import { exigirSupabase } from '@/lib/supabase'
+import { BUCKET_DOCUMENTOS, exigirSupabase } from '@/lib/supabase'
 import type {
   Alerta, Configuracao, Consulta, Glosa, Paciente, Procedimento, SituacaoProcedimento,
 } from '@/domain'
@@ -7,7 +7,7 @@ import type {
   AtendimentoCompleto, DocumentoRegistro, EntradaAtendimento, LoteRegistro, Repositorio,
 } from './repositorio'
 
-const BUCKET = 'documentos'
+const BUCKET = BUCKET_DOCUMENTOS
 
 export class RepositorioSupabase implements Repositorio {
   readonly modo = 'supabase' as const
