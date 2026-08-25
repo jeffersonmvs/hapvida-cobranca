@@ -1,6 +1,7 @@
 import type { ProcedimentoRealizado, Glosa } from './tipos'
 import { addDias, diaDoMes, diffDias, mesDe, mesSeguinte, ultimoDiaDoMes, formatarData, formatarMes } from './datas'
-import { porPrazo } from './glosas'
+import { formatarBRL } from './dinheiro'
+import { porPrazo, type GlosaComPrazo } from './glosas'
 
 /**
  * Calendario de prazos (§12).
@@ -105,18 +106,41 @@ export function alertaXml(mesCompetencia: string, pendentes: number, hoje: strin
   }
 }
 
+/**
+ * Alertas de prazo de recurso, AGRUPADOS. Vinte e duas glosas identicas do
+ * mesmo codigo na mesma competencia sao um alerta, nao vinte e dois - senao o
+ * painel vira uma parede de texto e ninguem le nenhum.
+ */
 export function alertasDeRecurso(glosas: Glosa[], hoje: string): AlertaPrazo[] {
-  return porPrazo(glosas, hoje)
-    .filter((g) => g.dias_restantes != null && g.dias_restantes <= 10)
-    .map((g) => ({
-      tipo: 'recurso' as const,
-      severidade: g.vencido ? 'critico' : (g.dias_restantes as number) <= 5 ? 'critico' : 'atencao',
-      titulo: `Recurso ${g.glosa.codigo_tuss ?? ''} - ${g.glosa.competencia}`,
-      mensagem: g.vencido
-        ? `Prazo de recurso venceu em ${formatarData(g.prazo as string)}.`
-        : `Prazo de recurso vence em ${formatarData(g.prazo as string)} (${g.dias_restantes} dia(s)).`,
-      dias_restantes: g.dias_restantes,
-    }))
+  const grupos = new Map<string, { itens: GlosaComPrazo[]; prazo: string; dias: number }>()
+
+  for (const g of porPrazo(glosas, hoje)) {
+    if (g.dias_restantes == null || g.dias_restantes > 10 || !g.prazo) continue
+    const chave = `${g.glosa.codigo_tuss ?? ''}|${g.glosa.competencia}|${g.prazo}`
+    const atual = grupos.get(chave)
+    if (atual) atual.itens.push(g)
+    else grupos.set(chave, { itens: [g], prazo: g.prazo, dias: g.dias_restantes })
+  }
+
+  return [...grupos.entries()]
+    .map(([chave, grupo]) => {
+      const [codigo, competencia] = chave.split('|')
+      const vencido = grupo.dias < 0
+      const n = grupo.itens.length
+      const total = grupo.itens.reduce((soma, g) => soma + g.glosa.valor_glosado, 0)
+      return {
+        tipo: 'recurso' as const,
+        severidade: (vencido || grupo.dias <= 5 ? 'critico' : 'atencao') as AlertaPrazo['severidade'],
+        titulo:
+          `${n > 1 ? `${n} recursos` : 'Recurso'} ${codigo} — ${competencia}` +
+          ` (${formatarBRL(total)})`,
+        mensagem: vencido
+          ? `Prazo de recurso venceu em ${formatarData(grupo.prazo)}.`
+          : `Prazo de recurso vence em ${formatarData(grupo.prazo)} (${grupo.dias} dia(s)).`,
+        dias_restantes: grupo.dias,
+      }
+    })
+    .sort((a, b) => (a.dias_restantes ?? 0) - (b.dias_restantes ?? 0))
 }
 
 /** Prazo de recurso: 30 dias apos o demonstrativo. */

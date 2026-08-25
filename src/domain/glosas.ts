@@ -152,7 +152,13 @@ export interface LinhaRanking {
   valor_total: number
   valor_recuperado: number
   nao_recursadas: number
-  /** null quando nao ha producao lancada do codigo para comparar */
+  /** quantos procedimentos desse codigo o app conhece */
+  producao_conhecida: number
+  /**
+   * null quando o app nao tem producao suficiente do codigo para comparar -
+   * glosa importada de competencia antiga sem o lancamento correspondente
+   * produziria taxa acima de 100%, que nao e taxa, e falta de dado.
+   */
   taxa_glosa: number | null
 }
 
@@ -176,7 +182,8 @@ export function rankingPorCodigo(
         ...itens.filter((g) => g.resultado === 'deferido').map((g) => g.valor_recurso ?? 0),
       ),
       nao_recursadas: itens.filter((g) => !g.recursada).length,
-      taxa_glosa: lancados > 0 ? itens.length / lancados : null,
+      producao_conhecida: lancados,
+      taxa_glosa: lancados > 0 && itens.length <= lancados ? itens.length / lancados : null,
     })
   }
   return linhas.sort((a, b) => b.valor_total - a.valor_total)

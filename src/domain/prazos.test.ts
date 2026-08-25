@@ -76,3 +76,27 @@ describe('prazo de recurso', () => {
     expect(alertas[1].severidade).toBe('critico')
   })
 })
+
+describe('agrupamento dos alertas de recurso', () => {
+  it('junta glosas identicas da mesma competencia num alerta so', () => {
+    const glosas = Array.from({ length: 22 }, (_, i) => ({
+      id: `g${i}`, codigo_tuss: '31009115', competencia: 'MEDISA 03/2026',
+      valor_glosado: 88, data_demonstrativo: '2026-03-10', recursada: false,
+    }))
+    const alertas = alertasDeRecurso(glosas, '2026-04-15')
+    expect(alertas).toHaveLength(1)
+    expect(alertas[0].titulo).toContain('22 recursos')
+    expect(alertas[0].titulo).toContain('1.936,00')
+  })
+
+  it('separa competencias diferentes', () => {
+    const alertas = alertasDeRecurso(
+      [
+        { codigo_tuss: '31009115', competencia: 'MEDISA 03/2026', valor_glosado: 88, data_demonstrativo: '2026-03-10' },
+        { codigo_tuss: '31009115', competencia: 'MEDISA 04/2026', valor_glosado: 88, data_demonstrativo: '2026-04-10' },
+      ],
+      '2026-05-01',
+    )
+    expect(alertas).toHaveLength(2)
+  })
+})
