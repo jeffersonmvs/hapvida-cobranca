@@ -1,0 +1,57 @@
+name: Publicar no GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Uma publicacao por vez; nao cancela a que ja esta em voo.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        env:
+          # O Pages serve o site em /<nome-do-repo>/, nao na raiz.
+          BASE_PATH: /${{ github.event.repository.name }}/
+          # Sem estes segredos o app sobe em MODO DEMONSTRACAO: dados ficticios,
+          # nada persistido. Para ligar no Supabase, cadastre os dois em
+          # Settings > Secrets and variables > Actions e rode o workflow de novo.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      - name: Fallback de SPA
+        # O Pages nao tem regra de reescrita. Servindo o mesmo shell no 404,
+        # abrir /hapvida-cobranca/glosas direto carrega o app e o react-router
+        # resolve a rota. Sem isto, so a raiz funciona.
+        run: cp dist/index.html dist/404.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deploy
+        uses: actions/deploy-pages@v4

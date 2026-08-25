@@ -7,7 +7,9 @@ import './estilos.css'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <BrowserRouter>
+    {/* BASE_URL vem do `base` do Vite: '/' no Netlify e em dev,
+        '/hapvida-cobranca/' quando publicado no GitHub Pages. */}
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ProvedorDados>
         <App />
       </ProvedorDados>
