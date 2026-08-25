@@ -3,8 +3,10 @@ import {
   agruparPorAssinatura, exposicaoDoMes, formatarBRL, formatarData, formatarMes,
   mesDe, padroesNovos, rankingPorCodigo, ROTULO_MOTIVO, serieTemporal,
 } from '@/domain'
-import { useDados, useProcedimentos } from '@/dados/contexto'
-import { Cartao, Etiqueta, Secao, Vazio } from '@/componentes/ui'
+import { useState } from 'react'
+import { repositorio, useDados, useProcedimentos } from '@/dados/contexto'
+import { iaDisponivel, normalizarGlosas } from '@/ai/cliente'
+import { Botao, Cartao, Etiqueta, Secao, Vazio } from '@/componentes/ui'
 
 /**
  * Inteligencia de glosa (§8.5 / §11.3).
@@ -13,8 +15,10 @@ import { Cartao, Etiqueta, Secao, Vazio } from '@/componentes/ui'
  * e por assinatura e nao depende do texto da operadora.
  */
 export default function Inteligencia() {
-  const { glosas, tabela, hoje } = useDados()
+  const { glosas, tabela, hoje, recarregar } = useDados()
   const todos = useProcedimentos()
+  const [normalizando, setNormalizando] = useState(false)
+  const [erroIa, setErroIa] = useState<string | null>(null)
 
   const realizados = todos.map((t) => t.procedimento)
   const grupos = useMemo(() => agruparPorAssinatura(glosas), [glosas])
@@ -27,7 +31,32 @@ export default function Inteligencia() {
     .filter((p) => (p.situacao ?? 'a_faturar') === 'a_faturar')
   const exposicao = exposicaoDoMes(aFaturarDoMes, tabela, hoje)
 
-  const naoNormalizadas = glosas.filter((g) => !g.justificativa_normalizada).length
+  const naoNormalizadas = glosas.filter((g) => !g.justificativa_normalizada)
+
+  const normalizar = async () => {
+    setNormalizando(true)
+    setErroIa(null)
+    try {
+      const saida = await normalizarGlosas({
+        itens: naoNormalizadas
+          .filter((g) => g.id && g.justificativa)
+          .map((g) => ({ id: g.id as string, justificativa: g.justificativa as string })),
+      })
+      // Em modo demonstracao a escrita no banco e feita aqui; com Supabase a
+      // propria edge function ja gravou.
+      if (repositorio.modo === 'memoria') {
+        for (const i of saida.itens) {
+          const g = glosas.find((x) => x.id === i.id)
+          if (g) await repositorio.atualizarGlosa({ ...g, justificativa_normalizada: i.motivo })
+        }
+      }
+      await recarregar()
+    } catch (e) {
+      setErroIa(e instanceof Error ? e.message : 'Falha ao normalizar.')
+    } finally {
+      setNormalizando(false)
+    }
+  }
 
   return (
     <div>
@@ -42,9 +71,23 @@ export default function Inteligencia() {
         <Cartao titulo="Exposicao do mes" valor={formatarBRL(exposicao.exposto)}
           tom={exposicao.exposto > 0 ? 'atencao' : 'neutro'}
           detalhe={`de ${formatarBRL(exposicao.total_a_faturar)} a faturar`} />
-        <Cartao titulo="Sem taxonomia" valor={naoNormalizadas}
+        <Cartao titulo="Sem taxonomia" valor={naoNormalizadas.length}
           detalhe="justificativas ainda nao normalizadas" />
       </div>
+
+      {naoNormalizadas.length > 0 && iaDisponivel && (
+        <div className="mt-3 rounded-xl border border-ia/40 bg-ia/10 p-3">
+          <p className="mb-2 text-xs text-slate-300">
+            A IA classifica cada justificativa na taxonomia fechada. O agrupamento
+            por assinatura ja funciona sem isso — a taxonomia serve para ler o
+            painel, nao para agrupar.
+          </p>
+          <Botao tipo="secundario" desabilitado={normalizando} onClick={normalizar}>
+            {normalizando ? 'Normalizando…' : `Normalizar ${naoNormalizadas.length} justificativa(s)`}
+          </Botao>
+          {erroIa && <p className="mt-2 text-xs text-atencao">{erroIa}</p>}
+        </div>
+      )}
 
       {novos.length > 0 && (
         <Secao titulo="Padrao novo — atencao">

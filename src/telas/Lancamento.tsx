@@ -8,6 +8,7 @@ import {
 import { repositorio, useDados } from '@/dados/contexto'
 import { Botao, Campo, classeInput, Secao, SeloConfianca, Vazio } from '@/componentes/ui'
 import { ListaAlertas } from '@/componentes/ListaAlertas'
+import { useAnaliseRisco } from '@/ai/hooks'
 
 const ANESTESIAS = ['geral', 'raqui', 'local', 'local+sedacao']
 
@@ -54,6 +55,7 @@ export default function Lancamento() {
   )
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const ia = useAnaliseRisco()
 
   const vigentes = useMemo(() => vigentesEm(tabela, at.data), [tabela, at.data])
 
@@ -265,10 +267,30 @@ export default function Lancamento() {
         </div>
       </Secao>
 
-      <Secao titulo={`Checklist antiglosa (${alertas.length})`}>
-        {alertas.length === 0
-          ? <Vazio>Nenhum alerta. Pode faturar.</Vazio>
-          : <ListaAlertas alertas={alertas} />}
+      <Secao
+        titulo={`Checklist antiglosa (${alertas.length + ia.alertas.length})`}
+        acao={
+          ia.disponivel ? (
+            <button
+              className="text-sm text-ia disabled:opacity-40"
+              disabled={ia.rodando || linhas.every((l) => !l.codigo_tuss)}
+              onClick={() => ia.analisar(linhas, tabela, at.data)}
+            >
+              {ia.rodando ? 'analisando…' : 'analisar com IA'}
+            </button>
+          ) : undefined
+        }
+      >
+        {alertas.length + ia.alertas.length === 0 ? (
+          <Vazio>Nenhum alerta. Pode faturar.</Vazio>
+        ) : (
+          <ListaAlertas alertas={[...alertas, ...ia.alertas]} />
+        )}
+        {ia.erro && <p className="mt-2 text-xs text-atencao">{ia.erro}</p>}
+        <p className="mt-2 text-xs text-slate-500">
+          As regras numeradas sao deterministicas. O que vier marcado como
+          sugestao da IA e palpite de modelo e precisa do seu julgamento.
+        </p>
       </Secao>
 
       {erro && <div className="rounded-lg border border-critico/40 bg-critico/10 p-3 text-sm text-critico">{erro}</div>}

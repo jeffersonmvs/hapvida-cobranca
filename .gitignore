@@ -9,3 +9,8 @@ dist-ssr
 coverage
 .vite
 supabase/.temp
+
+# Conjunto de avaliacao: contem dado de paciente, nao versionar
+avaliacao/imagens/
+avaliacao/gabaritos/
+avaliacao/codigos.json

@@ -6,12 +6,14 @@
   "description": "Controle de producao cirurgica, honorarios e prevencao de glosa - convenio HAPVIDA",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run prompts:build && tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false --noEmit",
-    "lint": "tsc -b"
+    "lint": "tsc -b",
+    "prompts:build": "node scripts/gerar-prompts.mjs",
+    "avaliar:extracao": "node scripts/avaliar-extracao.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
