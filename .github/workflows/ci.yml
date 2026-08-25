@@ -43,11 +43,18 @@ jobs:
 
       - name: Aceite em browser
         run: |
+          # `npm run preview` liga em 127.0.0.1 de proposito: sem --host o Vite
+          # escuta em localhost, que no runner resolve para ::1 primeiro, e o
+          # aceite (que fala com 127.0.0.1) nunca conecta.
           npm run preview &
-          for i in $(seq 1 60); do
+          preview=$!
+          for _ in $(seq 1 60); do
             if curl -sf -o /dev/null http://127.0.0.1:4173/; then break; fi
+            if ! kill -0 "$preview" 2>/dev/null; then
+              echo "::error::preview morreu antes de responder"; exit 1
+            fi
             sleep 1
           done
           curl -sf -o /dev/null http://127.0.0.1:4173/ \
-            || { echo "::error::preview nao subiu na porta 4173"; exit 1; }
+            || { echo "::error::preview nao respondeu em 127.0.0.1:4173"; exit 1; }
           npm run test:e2e
