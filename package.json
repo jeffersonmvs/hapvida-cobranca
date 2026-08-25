@@ -7,13 +7,14 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run prompts:build && tsc -b && vite build",
-    "preview": "vite preview",
+    "preview": "vite preview --port 4173",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false --noEmit",
     "lint": "tsc -b",
     "prompts:build": "node scripts/gerar-prompts.mjs",
-    "avaliar:extracao": "node scripts/avaliar-extracao.mjs"
+    "avaliar:extracao": "node scripts/avaliar-extracao.mjs",
+    "test:e2e": "node e2e/aceite.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
@@ -34,6 +35,7 @@
     "@types/spark-md5": "^3.0.4",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
+    "playwright": "^1.62.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3",

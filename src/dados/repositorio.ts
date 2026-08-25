@@ -64,7 +64,12 @@ export interface Repositorio {
   listarAtendimentos(): Promise<AtendimentoCompleto[]>
   salvarAtendimento(e: EntradaAtendimento): Promise<AtendimentoCompleto>
   atualizarSituacao(ids: string[], situacao: SituacaoProcedimento, quando: string): Promise<void>
-  resolverAlerta(id: string, resolvido: boolean): Promise<void>
+  /**
+   * Marca um alerta como resolvido. Aceita alerta recalculado (sem id): nesse
+   * caso grava a linha so para guardar a decisao do medico, ja que o checklist
+   * e recomputado a cada leitura (ver dados/alertas.ts).
+   */
+  resolverAlerta(alerta: Alerta, resolvido: boolean): Promise<void>
 
   listarGlosas(): Promise<Glosa[]>
   salvarGlosas(g: Glosa[]): Promise<void>

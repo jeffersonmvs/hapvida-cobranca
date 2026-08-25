@@ -112,10 +112,22 @@ export class RepositorioMemoria implements Repositorio {
     }
   }
 
-  async resolverAlerta(id: string, resolvido: boolean) {
+  async resolverAlerta(alerta: Alerta, resolvido: boolean) {
     for (const a of this.atendimentos) {
-      const al = a.alertas.find((x) => x.id === id)
-      if (al) al.resolvido = resolvido
+      if (alerta.id) {
+        const al = a.alertas.find((x) => x.id === alerta.id)
+        if (al) { al.resolvido = resolvido; return }
+      }
+      const meu = a.procedimentos.some((p) => p.id === alerta.procedimento_realizado_id)
+      if (!meu) continue
+      const igual = a.alertas.find(
+        (x) => x.regra === alerta.regra &&
+          x.procedimento_realizado_id === alerta.procedimento_realizado_id &&
+          x.mensagem === alerta.mensagem,
+      )
+      if (igual) igual.resolvido = resolvido
+      else a.alertas.push({ ...alerta, id: novoId('al'), resolvido })
+      return
     }
   }
 

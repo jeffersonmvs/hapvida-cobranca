@@ -60,7 +60,7 @@ function ItemAlerta({ alerta, aoResolver }: { alerta: Alerta; aoResolver?: (a: A
           </button>
         </div>
       )}
-      {aoResolver && alerta.id && (
+      {aoResolver && (
         <button
           onClick={() => aoResolver(alerta)}
           className="mt-2 text-xs text-slate-400 underline"

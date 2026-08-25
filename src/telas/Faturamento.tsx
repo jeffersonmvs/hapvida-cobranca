@@ -7,6 +7,7 @@ import {
 import { repositorio, useDados } from '@/dados/contexto'
 import { alertasDeTodos } from '@/dados/alertas'
 import { Botao, Cartao, Etiqueta, Secao, Vazio, classeInput } from '@/componentes/ui'
+import { ListaAlertas } from '@/componentes/ListaAlertas'
 
 /**
  * Faturamento (§10, nivel 1). O canal legitimo de automacao com a operadora e
@@ -48,16 +49,12 @@ export default function Faturamento() {
   }
 
   const pendencias: Pendencia[] = useMemo(
-    () => [
-      ...validarLote(entradaPrevia),
-      ...criticosAbertos.map((a) => ({
-        campo: 'alerta',
-        mensagem: `Alerta critico aberto (${a.regra}): ${a.mensagem}`,
-      })),
-    ],
+    () => validarLote(entradaPrevia),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [aFaturar, config, tabela, criticosAbertos],
+    [aFaturar, config, tabela],
   )
+
+  const impedimentos = pendencias.length + criticosAbertos.length
 
   const valorTotal = somar(
     ...aFaturar.flatMap((a) => a.procedimentos.map((p) => p.valor_cobrado)),
@@ -137,27 +134,44 @@ export default function Faturamento() {
       <div className="mt-3 grid grid-cols-2 gap-3">
         <Cartao titulo="Guias no lote" valor={aFaturar.length} />
         <Cartao titulo="Valor total" valor={formatarBRL(valorTotal)} />
-        <Cartao titulo="Pendencias" valor={pendencias.length}
-          tom={pendencias.length > 0 ? 'critico' : 'ok'} />
+        <Cartao titulo="Pendencias" valor={impedimentos}
+          tom={impedimentos > 0 ? 'critico' : 'ok'} />
         <Cartao titulo="Proximo lote"
           valor={lotes.length > 0 ? lotes[0].numero_lote + 1 : '—'}
           detalhe={`${lotes.length} lote(s) gerado(s)`} />
       </div>
 
       <Secao titulo="Pendencias que impedem o fechamento">
-        {pendencias.length === 0 ? (
+        {impedimentos === 0 ? (
           <div className="rounded-xl border border-ok/40 bg-ok/10 p-4 text-sm text-ok">
             Lote pronto para fechar.
           </div>
         ) : (
-          <ul className="space-y-2">
-            {pendencias.map((p, i) => (
-              <li key={i} className="rounded-lg border border-critico/40 bg-critico/10 p-3 text-sm">
-                <Etiqueta tom="critico">{p.campo}</Etiqueta>
-                <p className="mt-1 text-slate-200">{p.mensagem}</p>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-2">
+              {pendencias.map((p, i) => (
+                <li key={i} className="rounded-lg border border-critico/40 bg-critico/10 p-3 text-sm">
+                  <Etiqueta tom="critico">{p.campo}</Etiqueta>
+                  <p className="mt-1 text-slate-200">{p.mensagem}</p>
+                </li>
+              ))}
+            </ul>
+            {criticosAbertos.length > 0 && (
+              <div className="mt-3">
+                <p className="mb-2 text-xs text-slate-400">
+                  Alertas criticos abertos. Corrija o lancamento ou marque como
+                  resolvido — a decisao fica registrada.
+                </p>
+                <ListaAlertas
+                  alertas={criticosAbertos}
+                  aoResolver={async (a) => {
+                    await repositorio.resolverAlerta(a, !a.resolvido)
+                    await recarregar()
+                  }}
+                />
+              </div>
+            )}
+          </>
         )}
       </Secao>
 
@@ -169,7 +183,7 @@ export default function Faturamento() {
 
       <Secao titulo="Gerar">
         <div className="flex flex-wrap gap-2">
-          <Botao onClick={gerar} desabilitado={pendencias.length > 0 || gerando || aFaturar.length === 0}>
+          <Botao onClick={gerar} desabilitado={impedimentos > 0 || gerando || aFaturar.length === 0}>
             {gerando ? 'Gerando…' : 'Gerar lote TISS 04.03.00'}
           </Botao>
           <Botao tipo="secundario"

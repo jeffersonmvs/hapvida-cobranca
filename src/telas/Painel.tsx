@@ -5,14 +5,14 @@ import {
   calendarioEm, criticosAbertos, diffDias, exposicaoDoMes, formatarBRL,
   formatarData, formatarMes, mesDe, somar, ultimoDiaDoMes,
 } from '@/domain'
-import { useDados } from '@/dados/contexto'
+import { repositorio, useDados } from '@/dados/contexto'
 import { alertasDeTodos } from '@/dados/alertas'
 import { Cartao, Etiqueta, Secao, Vazio } from '@/componentes/ui'
 import { ListaAlertas } from '@/componentes/ListaAlertas'
 
 /** Painel do mes (§8.3). */
 export default function Painel() {
-  const { atendimentos, consultas, glosas, documentos, tabela, hoje } = useDados()
+  const { atendimentos, consultas, glosas, documentos, tabela, hoje, recarregar } = useDados()
   const mes = mesDe(hoje)
 
   const doMes = useMemo(
@@ -97,7 +97,15 @@ export default function Painel() {
       <Secao titulo={`Alertas criticos abertos (${criticos.length})`}>
         {criticos.length === 0
           ? <Vazio>Nenhum alerta critico no mes.</Vazio>
-          : <ListaAlertas alertas={criticos.slice(0, 6)} />}
+          : (
+            <ListaAlertas
+              alertas={criticos.slice(0, 6)}
+              aoResolver={async (a) => {
+                await repositorio.resolverAlerta(a, !a.resolvido)
+                await recarregar()
+              }}
+            />
+          )}
       </Secao>
 
       <Secao titulo="Calendario da competencia">

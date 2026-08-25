@@ -1,6 +1,6 @@
 import { exigirSupabase } from '@/lib/supabase'
 import type {
-  Configuracao, Consulta, Glosa, Paciente, Procedimento, SituacaoProcedimento,
+  Alerta, Configuracao, Consulta, Glosa, Paciente, Procedimento, SituacaoProcedimento,
 } from '@/domain'
 import { CONFIG_PADRAO } from '@/domain'
 import type {
@@ -150,9 +150,22 @@ export class RepositorioSupabase implements Repositorio {
     if (error) throw error
   }
 
-  async resolverAlerta(id: string, resolvido: boolean): Promise<void> {
-    const { error } = await exigirSupabase()
-      .from('alertas').update({ resolvido }).eq('id', id)
+  async resolverAlerta(alerta: Alerta, resolvido: boolean): Promise<void> {
+    const sb = exigirSupabase()
+    if (alerta.id) {
+      const { error } = await sb.from('alertas').update({ resolvido }).eq('id', alerta.id)
+      if (error) throw error
+      return
+    }
+    const { error } = await sb.from('alertas').insert({
+      procedimento_realizado_id: alerta.procedimento_realizado_id ?? null,
+      regra: alerta.regra,
+      severidade: alerta.severidade,
+      mensagem: alerta.mensagem,
+      sugestao: alerta.sugestao ?? null,
+      origem: alerta.origem,
+      resolvido,
+    })
     if (error) throw error
   }
 

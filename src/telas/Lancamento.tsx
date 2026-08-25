@@ -53,6 +53,8 @@ export default function Lancamento() {
   const [linhas, setLinhas] = useState<Rascunho[]>(
     existente?.procedimentos.map((p) => ({ ...p, chave: novaChave() })) ?? [linhaVazia()],
   )
+  // texto digitado por linha que ainda nao virou escolha de codigo
+  const [buscas, setBuscas] = useState<Record<string, string>>({})
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const ia = useAnaliseRisco()
@@ -79,17 +81,26 @@ export default function Lancamento() {
     (l) => l.codigo_tuss && !vigentes.some((v) => v.codigo_tuss === l.codigo_tuss),
   )
 
+  /**
+   * Linha em que o medico digitou algo que nao virou codigo escolhido. Sem
+   * isso o campo mostra o texto digitado e salva o codigo anterior - o tipo de
+   * silencio que faz cobranca sair errada.
+   */
+  const naoEscolhidos = linhas.filter((l) => (buscas[l.chave] ?? '').trim() !== '')
+
   const podeSalvar =
     at.numero.trim() !== '' &&
     nomePaciente.trim() !== '' &&
     linhas.length > 0 &&
     linhas.every((l) => l.codigo_tuss) &&
-    foraDaTabela.length === 0
+    foraDaTabela.length === 0 &&
+    naoEscolhidos.length === 0
 
   const alterar = (chave: string, patch: Partial<Rascunho>) =>
     setLinhas((ls) => ls.map((l) => (l.chave === chave ? { ...l, ...patch } : l)))
 
   const escolherCodigo = (chave: string, codigo: string) => {
+    setBuscas((b) => ({ ...b, [chave]: '' }))
     const r = resolverValor(tabela, codigo, at.data)
     if (!r.ok) {
       alterar(chave, { codigo_tuss: codigo, valor_cobrado: 0 })
@@ -105,10 +116,16 @@ export default function Lancamento() {
 
   /** Duplica a linha mantendo paciente e atendimento, mas EXIGINDO senha nova. */
   const outroSitio = () =>
-    setLinhas((ls) => [
-      ...ls,
-      { ...linhaVazia(), descricao_cirurgica: '' },
-    ])
+    setLinhas((ls) => [...ls, { ...linhaVazia(), descricao_cirurgica: '' }])
+
+  const digitar = (chave: string, valor: string) => {
+    // codigo exato digitado ja escolhe, sem obrigar a clicar na lista
+    if (vigentes.some((v) => v.codigo_tuss === valor.trim())) {
+      escolherCodigo(chave, valor.trim())
+      return
+    }
+    setBuscas((b) => ({ ...b, [chave]: valor }))
+  }
 
   const salvar = async () => {
     setSalvando(true)
@@ -231,6 +248,8 @@ export default function Lancamento() {
               vigentes={vigentes}
               tabela={tabela}
               data={at.data}
+              busca={buscas[l.chave] ?? ''}
+              aoDigitar={(v) => digitar(l.chave, v)}
               aoAlterar={(patch) => alterar(l.chave, patch)}
               aoEscolherCodigo={(c) => escolherCodigo(l.chave, c)}
               aoRemover={linhas.length > 1 ? () => setLinhas((ls) => ls.filter((x) => x.chave !== l.chave)) : undefined}
@@ -239,12 +258,25 @@ export default function Lancamento() {
         </div>
       </Secao>
 
-      {foraDaTabela.length > 0 && (
+      {(foraDaTabela.length > 0 || naoEscolhidos.length > 0) && (
         <div className="rounded-lg border border-critico/50 bg-critico/10 p-3 text-sm text-critico">
           <strong>Salvamento bloqueado.</strong>{' '}
-          {foraDaTabela.map((l) => l.codigo_tuss).join(', ')} nao consta na tabela de
-          honorarios vigente. Cadastre o codigo e o valor em Tabela de honorarios -
-          o app nao estima valor de procedimento.
+          {foraDaTabela.length > 0 && (
+            <>
+              {foraDaTabela.map((l) => l.codigo_tuss).join(', ')} nao consta na tabela
+              de honorarios vigente.{' '}
+            </>
+          )}
+          {naoEscolhidos.length > 0 && (
+            <>
+              {naoEscolhidos
+                .map((l) => `"${buscas[l.chave]}"`)
+                .join(', ')}{' '}
+              nao corresponde a nenhum codigo da tabela — escolha um da lista.{' '}
+            </>
+          )}
+          Cadastre o codigo e o valor em Tabela de honorarios — o app nao estima
+          valor de procedimento.
         </div>
       )}
 
@@ -319,18 +351,20 @@ function Linha({ rotulo, valor, destaque, tom }: {
 }
 
 function LinhaProcedimento({
-  linha, indice, vigentes, tabela, data, aoAlterar, aoEscolherCodigo, aoRemover,
+  linha, indice, vigentes, tabela, data, busca, aoDigitar, aoAlterar,
+  aoEscolherCodigo, aoRemover,
 }: {
   linha: Rascunho
   indice: number
   vigentes: ReturnType<typeof vigentesEm>
   tabela: ReturnType<typeof vigentesEm>
   data: string
+  busca: string
+  aoDigitar: (v: string) => void
   aoAlterar: (p: Partial<Rascunho>) => void
   aoEscolherCodigo: (codigo: string) => void
   aoRemover?: () => void
 }) {
-  const [busca, setBusca] = useState('')
   const resolvido = linha.codigo_tuss ? resolverValor(tabela, linha.codigo_tuss, data) : null
   const ref = resolvido?.ok ? resolvido.procedimento : null
   const opcoes = busca ? buscar(vigentes, busca).slice(0, 8) : []
@@ -351,16 +385,22 @@ function LinhaProcedimento({
           className={classeInput}
           value={busca || linha.codigo_tuss}
           placeholder="31009115 ou hernioplastia"
-          onChange={(e) => setBusca(e.target.value)}
+          onChange={(e) => aoDigitar(e.target.value)}
         />
       </Campo>
+      {busca.trim() !== '' && opcoes.length === 0 && (
+        <p className="mt-1 text-xs text-critico">
+          Nenhum codigo da tabela corresponde a "{busca}". Cadastre em Tabela de
+          honorarios antes de lancar.
+        </p>
+      )}
       {opcoes.length > 0 && (
         <ul className="mt-1 divide-y divide-line overflow-hidden rounded-lg border border-line">
           {opcoes.map((o) => (
             <li key={o.codigo_tuss}>
               <button
                 className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-surface2"
-                onClick={() => { aoEscolherCodigo(o.codigo_tuss); setBusca('') }}
+                onClick={() => aoEscolherCodigo(o.codigo_tuss)}
               >
                 <span>
                   <span className="block font-mono text-xs text-slate-400">{o.codigo_tuss}</span>
