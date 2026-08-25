@@ -14,3 +14,5 @@ supabase/.temp
 avaliacao/imagens/
 avaliacao/gabaritos/
 avaliacao/codigos.json
+
+*.tsbuildinfo
