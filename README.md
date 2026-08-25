@@ -37,9 +37,28 @@ conhecer as telas antes de provisionar o projeto.
 
 ### Publicacao
 
-`netlify.toml` ja traz a reescrita de SPA — sem ela, recarregar em `/faturamento`
-devolve 404, porque o roteamento e do react-router, no cliente. Build
-`npm run build`, publicar `dist/`.
+**GitHub Pages** (ativo). `.github/workflows/pages.yml` publica a cada push na
+`main`, em https://jeffersonmvs.github.io/hapvida-cobranca/. Exige
+`Settings > Pages > Source: GitHub Actions`.
+
+Duas particularidades do Pages estao resolvidas no workflow:
+
+- o site fica numa **subpasta** (`/hapvida-cobranca/`), nao na raiz. O build
+  recebe `BASE_PATH` e o react-router recebe o mesmo valor via
+  `import.meta.env.BASE_URL`. Fora do Pages a base continua `/`.
+- o Pages **nao tem regra de reescrita**, entao `dist/404.html` e uma copia do
+  `index.html`. Abrir `/hapvida-cobranca/glosas` direto responde com status 404
+  mas entrega o app, e o roteador resolve a rota. Ver um `404 document` no
+  console nessas rotas e o mecanismo funcionando, nao defeito.
+
+Sem os segredos `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` cadastrados em
+`Settings > Secrets and variables > Actions`, a publicacao sobe em **modo
+demonstracao**: dados ficticios, nada persistido, aviso permanente na tela.
+Cadastrar os dois e rodar o workflow de novo liga no Supabase sem mexer no
+codigo.
+
+**Netlify** continua suportada: `netlify.toml` traz a reescrita de SPA e a base
+fica em `/`. Build `npm run build`, publicar `dist/`.
 
 ### Com Supabase
 
