@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+html, body, #root { min-height: 100%; }
+
+body {
+  @apply bg-base text-slate-100 antialiased;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Alvo de toque confortavel: o uso e no corredor do centro cirurgico, em pe. */
+button, a, input, select, textarea { min-height: 44px; }
+input[type='checkbox'] { min-height: 0; }
+
+input, select, textarea { font-size: 16px; } /* evita zoom automatico no iOS */
+
+.tabular { font-variant-numeric: tabular-nums; }
