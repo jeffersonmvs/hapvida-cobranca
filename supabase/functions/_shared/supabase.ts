@@ -1,15 +1,27 @@
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-/** Cliente com o JWT do chamador: a RLS continua valendo dentro da funcao. */
-export function clienteDoUsuario(req: Request): SupabaseClient {
+export type ClienteFaturamento = ReturnType<typeof clienteDoUsuario>
+
+/** Mesmo schema e mesmo bucket do cliente do navegador. */
+export const SCHEMA = 'faturamento'
+export const BUCKET_DOCUMENTOS = 'faturamento-documentos'
+
+/**
+ * Cliente com o JWT do chamador: a RLS continua valendo dentro da funcao.
+ * Sem anotacao de tipo - `SupabaseClient` fixaria o schema em 'public'.
+ */
+export function clienteDoUsuario(req: Request) {
   return createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } },
+    {
+      db: { schema: SCHEMA },
+      global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
+    },
   )
 }
 
-export async function exigirUsuario(sb: SupabaseClient): Promise<string> {
+export async function exigirUsuario(sb: ClienteFaturamento): Promise<string> {
   const { data, error } = await sb.auth.getUser()
   if (error || !data.user) throw new Error('nao autenticado')
   return data.user.id
@@ -20,7 +32,7 @@ export async function exigirUsuario(sb: SupabaseClient): Promise<string> {
  * com dado de paciente.
  */
 export async function registrarAnalise(
-  sb: SupabaseClient,
+  sb: ClienteFaturamento,
   registro: {
     tipo: 'extracao' | 'risco_glosa' | 'padrao' | 'recurso' | 'redacao'
     referencia_id?: string | null

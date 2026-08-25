@@ -1,5 +1,5 @@
 import { chamarModelo, CORS, erro, MODELO, resposta } from '../_shared/ia.ts'
-import { clienteDoUsuario, exigirUsuario, registrarAnalise } from '../_shared/supabase.ts'
+import { BUCKET_DOCUMENTOS, clienteDoUsuario, exigirUsuario, registrarAnalise } from '../_shared/supabase.ts'
 import { PROMPT_EXTRACAO, PROMPT_EXTRACAO_VERSAO } from '../_shared/prompts.gen.ts'
 import { ESQUEMA_EXTRACAO } from '../_shared/esquemas.ts'
 
@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     const { storage_path, codigos_vigentes } = await req.json()
     if (!storage_path) return erro('storage_path obrigatorio')
 
-    const { data: arquivo, error } = await sb.storage.from('documentos').download(storage_path)
+    const { data: arquivo, error } = await sb.storage.from(BUCKET_DOCUMENTOS).download(storage_path)
     if (error || !arquivo) return erro('documento nao encontrado no Storage', 404)
 
     const bytes = new Uint8Array(await arquivo.arrayBuffer())
