@@ -25,9 +25,17 @@ export default function Faturamento() {
     [atendimentos, mes],
   )
 
-  const aFaturar = doMes.filter((a) =>
-    a.procedimentos.some((p) => (p.situacao ?? 'a_faturar') !== 'pago'),
-  )
+  /**
+   * So entra no lote o que ainda esta a faturar. Depois de gerado, os
+   * procedimentos viram 'faturado' - senao gerar o lote duas vezes produziria
+   * duas cobrancas das mesmas guias.
+   */
+  const aFaturar = doMes
+    .map((a) => ({
+      ...a,
+      procedimentos: a.procedimentos.filter((p) => (p.situacao ?? 'a_faturar') === 'a_faturar'),
+    }))
+    .filter((a) => a.procedimentos.length > 0)
 
   const criticosAbertos = alertasDeTodos(doMes, tabela, hoje).filter(
     (x) => x.severidade === 'critico' && !x.resolvido,
@@ -98,7 +106,18 @@ export default function Faturamento() {
           hash_documento: lote.hash,
           gerado_em: new Date().toISOString(),
         },
-        aFaturar.map((a) => a.atendimento.id ?? '').filter(Boolean),
+        lote.guias.map((g, i) => ({
+          atendimento_id: aFaturar[i].atendimento.id ?? null,
+          numero_guia: g.numero_guia,
+          valor: g.valor,
+        })),
+      )
+
+      // o que foi para o lote sai da fila de faturamento
+      await repositorio.atualizarSituacao(
+        aFaturar.flatMap((a) => a.procedimentos.map((p) => p.id ?? '')).filter(Boolean),
+        'faturado',
+        new Date().toISOString(),
       )
       await recarregar()
     } catch (e) {

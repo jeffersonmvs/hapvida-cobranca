@@ -85,6 +85,9 @@ export interface Repositorio {
   enviarArquivo(caminho: string, arquivo: Blob, tipoMime: string): Promise<void>
 
   listarLotes(): Promise<LoteRegistro[]>
-  registrarLote(l: Omit<LoteRegistro, 'id'>, atendimentoIds: string[]): Promise<LoteRegistro>
+  registrarLote(
+    l: Omit<LoteRegistro, 'id'>,
+    guias: Array<{ atendimento_id: string | null; numero_guia: number; valor: number }>,
+  ): Promise<LoteRegistro>
   proximoNumero(chave: 'lote' | 'guia', quantidade: number): Promise<number>
 }

@@ -247,20 +247,16 @@ export class RepositorioSupabase implements Repositorio {
   }
 
   async registrarLote(
-    l: Omit<LoteRegistro, 'id'>, atendimentoIds: string[],
+    l: Omit<LoteRegistro, 'id'>,
+    guias: Array<{ atendimento_id: string | null; numero_guia: number; valor: number }>,
   ): Promise<LoteRegistro> {
     const sb = exigirSupabase()
     const { data, error } = await sb.from('lotes_tiss').insert(l).select().single()
     if (error) throw error
-    if (atendimentoIds.length > 0) {
-      const { error: e2 } = await sb.from('lote_guias').insert(
-        atendimentoIds.map((atendimento_id, i) => ({
-          lote_id: data.id,
-          atendimento_id,
-          numero_guia: l.guia_inicial + i,
-          valor: 0,
-        })),
-      )
+    if (guias.length > 0) {
+      const { error: e2 } = await sb
+        .from('lote_guias')
+        .insert(guias.map((g) => ({ ...g, lote_id: data.id })))
       if (e2) throw e2
     }
     return data as LoteRegistro

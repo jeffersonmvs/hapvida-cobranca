@@ -128,6 +128,8 @@ ok(!/[^\x00-\xff]/.test(xml), 'nenhum caractere fora da tabela latin1')
 
 corpo = await p.locator('body').innerText()
 ok(/Lote 41/.test(corpo), 'lote registrado no historico com numeracao sequencial')
+ok(/GUIAS NO LOTE\n0/.test(corpo) || /Lote pronto para fechar/.test(corpo) === false,
+   'o que foi para o lote sai da fila e nao pode ser faturado duas vezes')
 
 // ---- criterio 12: PDF de producao do dia ---------------------------------
 const pdf = await Promise.all([
