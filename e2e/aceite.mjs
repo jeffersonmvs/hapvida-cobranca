@@ -4,13 +4,16 @@
  *   npm run build && npm run preview   (porta 4173)
  *   node e2e/aceite.mjs
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { chromium } from 'playwright'
 
 const BASE = process.env.BASE ?? 'http://127.0.0.1:4173'
-const b = await chromium.launch({
-  executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium',
-})
+// Em CI o Chromium vem de `playwright install`; no container de
+// desenvolvimento ele ja esta em /opt/pw-browsers.
+const chromiumLocal = process.env.CHROMIUM ?? '/opt/pw-browsers/chromium'
+const b = await chromium.launch(
+  existsSync(chromiumLocal) ? { executablePath: chromiumLocal } : {},
+)
 const p = await b.newPage({ viewport: { width: 414, height: 900 } })
 const erros = []
 p.on('pageerror', e => erros.push(String(e)))

@@ -20,7 +20,16 @@ npm install
 npm run dev        # sem Supabase configurado, sobe em MODO DEMONSTRACAO
 npm test           # 105 testes de dominio
 npm run build
+
+# aceite de ponta a ponta num browser real, contra o modo demonstracao
+npm run preview &
+npm run test:e2e
 ```
+
+O mesmo conjunto roda no CI (`.github/workflows/ci.yml`) a cada push na `main` e
+a cada pull request: testes de dominio, conferencia de que `prompts.gen.ts` esta
+em dia com os markdowns, build e o aceite em browser. Regra de faturamento que
+quebrar reprova o PR sozinha.
 
 **Modo demonstracao**: sem `VITE_SUPABASE_URL`, o app roda com um repositorio em
 memoria, dados ficticios e um aviso permanente no topo. Nada e salvo. Serve para

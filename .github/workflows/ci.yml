@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: testes, build e aceite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Testes de dominio
+        run: npm test
+
+      - name: Conferir que os prompts gerados estao em dia
+        run: |
+          npm run prompts:build
+          git diff --exit-code supabase/functions/_shared/prompts.gen.ts \
+            || { echo "::error::prompts.gen.ts desatualizado. Rode 'npm run prompts:build' e commite."; exit 1; }
+
+      - name: Build
+        run: npm run build
+
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Aceite em browser
+        run: |
+          npm run preview &
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://127.0.0.1:4173/; then break; fi
+            sleep 1
+          done
+          curl -sf -o /dev/null http://127.0.0.1:4173/ \
+            || { echo "::error::preview nao subiu na porta 4173"; exit 1; }
+          npm run test:e2e
