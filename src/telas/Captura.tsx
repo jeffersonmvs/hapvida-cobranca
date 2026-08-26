@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatarData, vigentesEm } from '@/domain'
 import { repositorio, useDados } from '@/dados/contexto'
 import { extrairZip, formatarTamanho, prepararArquivo } from '@/lib/imagem'
 import { extrairDocumento, iaDisponivel, IaIndisponivel } from '@/ai/cliente'
-import { Botao, Etiqueta, Secao, Vazio } from '@/componentes/ui'
+import { Etiqueta, Secao, Vazio } from '@/componentes/ui'
 
 type Estado = 'preparando' | 'enviando' | 'extraindo' | 'pronto' | 'duplicado' | 'erro'
 
@@ -20,6 +20,22 @@ interface Item {
 let n = 0
 
 /**
+ * O input fica dentro de um <label>: quem abre o seletor e o toque do usuario
+ * no proprio label, nao um .click() disparado por JS. O Safari do iPhone
+ * ignora clique sintetico em input com display:none, e o resultado era o
+ * botao "Galeria" nao fazer absolutamente nada.
+ *
+ * Por isso tambem nao usamos `hidden` (display:none) aqui: o input precisa
+ * continuar renderizado para receber o clique encaminhado pelo label. Fica
+ * invisivel por tamanho zero e opacidade, nunca por display.
+ */
+const CLASSE_INPUT_ARQUIVO = 'absolute h-0 w-0 opacity-0'
+
+const CLASSE_BOTAO_ARQUIVO =
+  'relative cursor-pointer rounded-lg border border-line bg-surface2 px-4 py-2.5 ' +
+  'text-center text-sm font-medium text-slate-100 transition hover:bg-line'
+
+/**
  * Captura e importacao de documentos (§8.1) - a entrada principal do sistema.
  *
  * O upload NAO espera a extracao: a fila roda em segundo plano e a tela mostra
@@ -28,9 +44,6 @@ let n = 0
 export default function Captura() {
   const { documentos, tabela, hoje, recarregar } = useDados()
   const [itens, setItens] = useState<Item[]>([])
-  const camera = useRef<HTMLInputElement>(null)
-  const galeria = useRef<HTMLInputElement>(null)
-  const zip = useRef<HTMLInputElement>(null)
 
   const atualizar = (chave: string, patch: Partial<Item>) =>
     setItens((is) => is.map((i) => (i.chave === chave ? { ...i, ...patch } : i)))
@@ -142,25 +155,25 @@ export default function Captura() {
         mesmo, antes de subir.
       </p>
 
-      <button
-        onClick={() => camera.current?.click()}
-        className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-brand/50 bg-brand/10 p-10 text-brand"
-      >
+      <label className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-brand/50 bg-brand/10 p-10 text-brand">
         <span className="text-4xl leading-none">◉</span>
         <span className="text-sm font-medium">Fotografar (lote)</span>
-      </button>
+        <input type="file" accept="image/*" capture="environment" multiple
+          className={CLASSE_INPUT_ARQUIVO} onChange={(e) => aoSelecionar(e)} />
+      </label>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <Botao tipo="secundario" onClick={() => galeria.current?.click()}>Galeria / PDF</Botao>
-        <Botao tipo="secundario" onClick={() => zip.current?.click()}>Importar ZIP</Botao>
+        <label className={CLASSE_BOTAO_ARQUIVO}>
+          Galeria / PDF
+          <input type="file" accept="image/*,application/pdf" multiple
+            className={CLASSE_INPUT_ARQUIVO} onChange={(e) => aoSelecionar(e)} />
+        </label>
+        <label className={CLASSE_BOTAO_ARQUIVO}>
+          Importar ZIP
+          <input type="file" accept=".zip,application/zip"
+            className={CLASSE_INPUT_ARQUIVO} onChange={(e) => aoSelecionar(e, true)} />
+        </label>
       </div>
-
-      <input ref={camera} type="file" accept="image/*" capture="environment" multiple
-        className="hidden" onChange={(e) => aoSelecionar(e)} />
-      <input ref={galeria} type="file" accept="image/*,application/pdf,.heic,.heif" multiple
-        className="hidden" onChange={(e) => aoSelecionar(e)} />
-      <input ref={zip} type="file" accept=".zip,application/zip"
-        className="hidden" onChange={(e) => aoSelecionar(e, true)} />
 
       {itens.length > 0 && (
         <Secao titulo={`Fila (${itens.length})`}>

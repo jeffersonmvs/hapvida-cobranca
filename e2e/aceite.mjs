@@ -175,6 +175,31 @@ ok(/NAO ENCONTRADOS NO RELATORIO \([1-9]/i.test(corpo),
 ok(/NAO ENCONTRADOS NO BANCO \(1\)/i.test(corpo),
    'criterio 13: conciliacao mostra o que o relatorio traz e o banco nao conhece')
 
+// --- captura: o seletor de arquivo precisa abrir no Safari do iPhone --------
+// O Safari ignora .click() sintetico em input com display:none. O sintoma era
+// tocar em "Galeria / PDF" e nao acontecer nada. Cada input fica dentro de um
+// <label>, e nenhum deles pode voltar a ser display:none.
+await p.goto(BASE + '/captura', { waitUntil: 'networkidle' })
+const inputs = p.locator('input[type="file"]')
+ok(await inputs.count() === 3, 'captura: os tres seletores de arquivo existem')
+
+const diagnostico = await inputs.evaluateAll((els) =>
+  els.map((el) => ({
+    accept: el.getAttribute('accept') ?? '',
+    display: getComputedStyle(el).display,
+    visibility: getComputedStyle(el).visibility,
+    dentroDeLabel: !!el.closest('label'),
+  })),
+)
+ok(diagnostico.every((d) => d.dentroDeLabel),
+   'captura: todo input de arquivo fica dentro de um <label>')
+ok(diagnostico.every((d) => d.display !== 'none' && d.visibility !== 'hidden'),
+   'captura: nenhum input de arquivo usa display:none (o iOS nao abriria o seletor)')
+
+const galeriaAccept = diagnostico.find((d) => d.accept.includes('application/pdf'))?.accept ?? ''
+ok(galeriaAccept === 'image/*,application/pdf',
+   'captura: accept da galeria sem extensoes soltas, que o iOS trata mal')
+
 console.log(erros.length ? 'ERROS DE PAGINA:\n' + erros.join('\n') : 'sem erros de pagina')
 await b.close()
 process.exit(falhas > 0 || erros.length > 0 ? 1 : 0)
