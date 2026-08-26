@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import type { Configuracao as Config } from '@/domain'
 import { repositorio, useDados } from '@/dados/contexto'
+import { useSessao } from '@/dados/sessao'
 import { Botao, Campo, classeInput, Secao } from '@/componentes/ui'
 
 export default function Configuracao() {
   const { config, modo, recarregar } = useDados()
+  const sessao = useSessao()
   const [c, setC] = useState<Config>(config)
   const [salvo, setSalvo] = useState(false)
 
@@ -72,6 +74,15 @@ export default function Configuracao() {
         <Botao onClick={salvar}>Salvar</Botao>
         {salvo && <span className="text-sm text-ok">salvo ✓</span>}
       </div>
+
+      {sessao.exigeLogin && (
+        <Secao titulo="Sessao">
+          <div className="flex items-center justify-between rounded-xl border border-line bg-surface p-4">
+            <span className="min-w-0 truncate text-sm">{sessao.email}</span>
+            <Botao tipo="secundario" onClick={() => void sessao.sair()}>Sair</Botao>
+          </div>
+        </Secao>
+      )}
 
       <p className="mt-6 text-xs leading-relaxed text-slate-500">
         Armazenamento: {modo === 'supabase' ? 'Supabase (RLS ligada, Storage privado)' : 'memoria (modo demonstracao)'}.

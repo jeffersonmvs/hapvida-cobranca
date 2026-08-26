@@ -169,6 +169,20 @@ nao envia cobranca sem revisao humana na tela.
 
 ---
 
+## Acesso
+
+O app exige login (Supabase Auth) e o banco so responde a e-mail cadastrado em
+`faturamento.usuarios_permitidos`. Estar autenticado no projeto **nao** basta:
+o projeto Supabase e compartilhado com outros sistemas e tem varias contas, e
+nenhuma delas enxerga o faturamento sem estar nessa tabela.
+
+Para liberar alguem (a contabilidade, por exemplo):
+
+```sql
+insert into faturamento.usuarios_permitidos (email, papel)
+values ('fulano@exemplo.com', 'contabilidade');
+```
+
 ## Privacidade
 
 Dado de saude e dado pessoal sensivel. RLS ligada em todas as tabelas, Storage
