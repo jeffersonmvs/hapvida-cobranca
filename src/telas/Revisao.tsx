@@ -7,6 +7,7 @@ import {
 import { repositorio, useDados } from '@/dados/contexto'
 import { esquemaExtracao, type CampoExtraido, type Extracao } from '@/ai/esquemas'
 import { Botao, Campo, classeInput, Etiqueta, Secao, Vazio } from '@/componentes/ui'
+import { mensagemDeErro } from '@/lib/erros'
 import { ListaAlertas } from '@/componentes/ListaAlertas'
 
 const LIMIAR_BAIXA_CONFIANCA = 0.7
@@ -27,7 +28,14 @@ export default function Revisao() {
 
   const [url, setUrl] = useState<string>('')
   const [campos, setCampos] = useState<Record<string, string>>({})
-  const [procs, setProcs] = useState<Array<{ codigo: string; senha: string; descricao: string }>>([])
+  /**
+   * `origem` e o indice da linha na extracao da IA, preservado para a barra de
+   * confianca continuar apontando para o campo certo depois de remover uma
+   * linha. Linha acrescentada a mao nao tem origem.
+   */
+  const [procs, setProcs] = useState<
+    Array<{ codigo: string; senha: string; descricao: string; origem: number | null }>
+  >([])
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -57,10 +65,11 @@ export default function Revisao() {
       descricao_cirurgica: extracao.descricao_cirurgica.valor ?? '',
     })
     setProcs(
-      extracao.procedimentos.map((p) => ({
+      extracao.procedimentos.map((p, i) => ({
         codigo: p.codigo_tuss.valor ?? '',
         senha: p.senha.valor ?? '',
         descricao: p.descricao.valor ?? '',
+        origem: i,
       })),
     )
   }, [extracao])
@@ -168,7 +177,7 @@ export default function Revisao() {
       await recarregar()
       navegar('/captura')
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao confirmar.')
+      setErro(mensagemDeErro(e, 'Falha ao confirmar.'))
     } finally {
       setSalvando(false)
     }
@@ -254,7 +263,7 @@ export default function Revisao() {
           <Secao titulo={`Procedimentos (${procs.length})`}>
             <div className="space-y-3">
               {procs.map((p, i) => {
-                const orig = extracao.procedimentos[i]
+                const orig = p.origem === null ? undefined : extracao.procedimentos[p.origem]
                 const r = p.codigo ? resolverValor(tabela, p.codigo, campos.data || hoje) : null
                 return (
                   <div key={i} className="rounded-xl border border-line bg-surface p-3">
@@ -264,24 +273,37 @@ export default function Revisao() {
                       <CampoRevisao rotulo="Senha" campo={orig?.senha} valor={p.senha}
                         aoMudar={(v) => setProcs(procs.map((x, k) => (k === i ? { ...x, senha: v } : x)))} />
                     </div>
-                    <div className="mt-2 text-xs">
-                      {r?.ok ? (
-                        <span>
-                          {r.procedimento.descricao} ·{' '}
-                          <strong>{formatarBRL(r.valor_cobrar)}</strong> · previsto{' '}
-                          {formatarBRL(r.valor_previsto)}
-                        </span>
-                      ) : p.codigo ? (
-                        <span className="text-critico">{r?.ok === false ? r.motivo : ''}</span>
-                      ) : (
-                        <span className="text-slate-500">informe o codigo</span>
+                    <div className="mt-2 flex items-start justify-between gap-3 text-xs">
+                      <div className="min-w-0">
+                        {r?.ok ? (
+                          <span>
+                            {r.procedimento.descricao} ·{' '}
+                            <strong>{formatarBRL(r.valor_cobrar)}</strong> · previsto{' '}
+                            {formatarBRL(r.valor_previsto)}
+                          </span>
+                        ) : p.codigo ? (
+                          <span className="text-critico">{r?.ok === false ? r.motivo : ''}</span>
+                        ) : (
+                          <span className="text-slate-500">informe o codigo</span>
+                        )}
+                      </div>
+                      {procs.length > 1 && (
+                        <button
+                          type="button"
+                          className="shrink-0 rounded-lg border border-line px-2 py-1 text-slate-400 hover:text-critico"
+                          onClick={() => setProcs(procs.filter((_, k) => k !== i))}
+                        >
+                          remover sitio
+                        </button>
                       )}
                     </div>
                   </div>
                 )
               })}
               <Botao tipo="secundario"
-                onClick={() => setProcs([...procs, { codigo: '', senha: '', descricao: '' }])}>
+                onClick={() =>
+                  setProcs([...procs, { codigo: '', senha: '', descricao: '', origem: null }])
+                }>
                 + outro sitio
               </Botao>
             </div>
