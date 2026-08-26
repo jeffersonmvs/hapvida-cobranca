@@ -5,7 +5,12 @@
  * Se ela aparecer em qualquer bundle do cliente, e bug de seguranca (§13).
  */
 
-export const MODELO = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-sonnet-5'
+/**
+ * Opus 5 e o padrao. Extracao de boletim manuscrito e leitura critica: senha
+ * errada vira glosa, e o barato sai caro. Para trocar por um modelo mais
+ * barato, defina ANTHROPIC_MODEL nos secrets - e a sua decisao, nao a minha.
+ */
+export const MODELO = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-opus-5'
 const CHAVE = Deno.env.get('ANTHROPIC_API_KEY')
 const URL_API = 'https://api.anthropic.com/v1/messages'
 
@@ -34,8 +39,14 @@ export interface BlocoConteudo {
 }
 
 /**
- * Chama o modelo forcando saida em JSON via tool use - text mode devolve
- * markdown em volta do JSON com frequencia suficiente para nao valer o risco.
+ * Chama o modelo pedindo a saida por tool use, que garante JSON estruturado -
+ * modo texto devolve markdown em volta do JSON com frequencia demais.
+ *
+ * tool_choice fica em 'auto', nao forcado numa ferramenta especifica: forcar
+ * e incompativel com thinking estendido, e no Opus 5 o thinking vem ligado por
+ * padrao. Com uma unica ferramenta disponivel e o prompt mandando responder so
+ * o JSON do schema, o modelo a chama; se nao chamar, falhamos alto em vez de
+ * aproveitar texto solto.
  */
 export async function chamarModelo(opcoes: {
   sistema: string
@@ -55,7 +66,9 @@ export async function chamarModelo(opcoes: {
     },
     body: JSON.stringify({
       model: MODELO,
-      max_tokens: opcoes.maxTokens ?? 4096,
+      // Nao economizar aqui: estourar o teto trunca a saida no meio e obriga
+      // a refazer a chamada inteira.
+      max_tokens: opcoes.maxTokens ?? 16000,
       system: opcoes.sistema,
       tools: [
         {
@@ -64,7 +77,7 @@ export async function chamarModelo(opcoes: {
           input_schema: opcoes.esquema,
         },
       ],
-      tool_choice: { type: 'tool', name: opcoes.nomeFerramenta },
+      tool_choice: { type: 'auto' },
       messages: [{ role: 'user', content: opcoes.conteudo }],
     }),
   })
@@ -75,8 +88,20 @@ export async function chamarModelo(opcoes: {
   }
 
   const dados = await r.json()
+  // Opus 5 responde com blocos de thinking antes do tool_use; procuramos o
+  // bloco certo em vez de assumir posicao.
   const bloco = (dados.content ?? []).find((c: { type: string }) => c.type === 'tool_use')
-  if (!bloco) throw new Error('O modelo nao devolveu saida estruturada.')
+  if (!bloco) {
+    const texto = (dados.content ?? [])
+      .filter((c: { type: string }) => c.type === 'text')
+      .map((c: { text?: string }) => c.text ?? '')
+      .join(' ')
+      .slice(0, 200)
+    throw new Error(
+      `O modelo nao devolveu saida estruturada (stop_reason: ${dados.stop_reason})` +
+        (texto ? `: ${texto}` : ''),
+    )
+  }
   return bloco.input
 }
 

@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       sistema: PROMPT_EXTRACAO,
       nomeFerramenta: 'devolver_extracao',
       esquema: ESQUEMA_EXTRACAO,
-      maxTokens: 8192,
+      maxTokens: 16000,
       conteudo: [
         ehPdf
           ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
