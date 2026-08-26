@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
       sistema: PROMPT_RECURSO,
       nomeFerramenta: 'devolver_recurso',
       esquema: ESQUEMA_RECURSO,
-      maxTokens: 4096,
+      maxTokens: 16000,
       conteudo: [
         {
           type: 'text',

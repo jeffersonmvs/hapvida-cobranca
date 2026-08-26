@@ -92,13 +92,22 @@ export function calcularAtendimento(
   }
 
   // --- regra 4: codigos equivalentes remuneram apenas um -------------------
+  //
+  // Equivalencia e simetrica: se A e a mesma cirurgia que B, B e a mesma que A.
+  // A tabela so guarda um ponteiro por linha (equivalente_a), entao o par pode
+  // estar declarado de um lado so - e o caso de 31005470 -> 31005497, em que
+  // 31005497 ja aponta para 43050200 e nao tem coluna sobrando. Olhar o
+  // ponteiro dos dois lados evita que o abatimento dependa de qual codigo foi
+  // lancado primeiro: antes, com o ponteiro na linha de baixo, os dois eram
+  // remunerados e o honorario dobrava.
   const ativos = () => base.filter((b) => b.item.remunerado)
   for (const a of ativos()) {
-    const equivalente = a.ref?.equivalente_a
-    if (!equivalente) continue
     for (const b of ativos()) {
       if (b.indice <= a.indice) continue
-      if (b.item.codigo_tuss !== equivalente) continue
+      const equivalentes =
+        a.ref?.equivalente_a === b.item.codigo_tuss ||
+        b.ref?.equivalente_a === a.item.codigo_tuss
+      if (!equivalentes) continue
       // mantem o de maior valor cobrado; empate mantem o primeiro lancado
       const perdedor = b.item.valor_cobrado > a.item.valor_cobrado ? a : b
       const vencedor = perdedor === a ? b : a

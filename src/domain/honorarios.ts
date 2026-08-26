@@ -1,6 +1,7 @@
 import type { Procedimento } from './tipos'
 import { ehAntes, ehDepois } from './datas'
 import { normalizar } from './texto'
+import { nomeNoCatalogo } from './catalogo'
 
 /**
  * Tabela de honorarios: consulta por vigencia e regra 9 (nunca estimar valor).
@@ -46,13 +47,19 @@ export function resolverValor(
 ): ResolucaoValor {
   const proc = vigenteEm(tabela, codigo, data)
   if (!proc) {
+    // Codigo conhecido e codigo inexistente sao problemas diferentes, e a
+    // acao do medico muda: um pede o valor, o outro pede reler a foto.
+    const nome = nomeNoCatalogo(codigo)
     return {
       ok: false,
       codigo,
-      motivo:
-        `Codigo ${codigo} nao consta na tabela de honorarios vigente em ` +
-        `${data}. Informe o valor na tabela de honorarios antes de lancar - ` +
-        `o app nao estima valor de procedimento.`,
+      motivo: nome
+        ? `${codigo} - ${nome}: procedimento do catalogo ainda sem valor ` +
+          `cadastrado em ${data}. Informe o valor em Honorarios antes de ` +
+          `lancar - o app nao estima valor de procedimento.`
+        : `Codigo ${codigo} nao existe no catalogo do servico nem na tabela ` +
+          `de honorarios. Confira o codigo no documento: leitura errada e a ` +
+          `causa mais provavel.`,
     }
   }
   return {
