@@ -76,6 +76,7 @@ export const REGRAS: RegraChecklist[] = [
   { id: 'R07', titulo: 'Cirurgia fora da validade da autorizacao', severidade: 'atencao' },
   { id: 'R08', titulo: 'Divergencia entre boletim e ficha', severidade: 'atencao' },
   { id: 'R09', titulo: 'Dois sitios sem incisoes independentes descritas', severidade: 'atencao' },
+  { id: 'R11', titulo: 'Boletim ainda nao anexado', severidade: 'atencao' },
   { id: 'R10', titulo: 'A faturar com o mes terminando', severidade: 'atencao' },
 ]
 
@@ -104,11 +105,21 @@ export function rodarChecklist(ctx: ContextoChecklist): Alerta[] {
     })
   }
 
+  /**
+   * A ficha de internacao e a guia trazem carteira, acomodacao, codigos e
+   * senhas, mas nao tem descricao cirurgica - e nem deveriam ter. Sem boletim,
+   * R01, R02 e R09 nao tem o que ler: ausencia de descricao nao e omissao na
+   * descricao, e acusar glosa por isso e alarme falso.
+   */
+  const temDescricao = procedimentos.some(
+    (p) => (p.descricao_cirurgica ?? '').trim().length > 0,
+  )
+
   procedimentos.forEach((pr, i) => {
     const ref = vigenteEm(tabela, pr.codigo_tuss, data)
 
     // -- R01: codigo exige retalho e a descricao nao contem os termos --------
-    if (ref?.exige_retalho) {
+    if (ref?.exige_retalho && temDescricao) {
       const termos = ref.termos_exigidos?.length ? ref.termos_exigidos : ['retalho']
       if (!contemTodos(pr.descricao_cirurgica, termos)) {
         add(
@@ -124,7 +135,7 @@ export function rodarChecklist(ctx: ContextoChecklist): Alerta[] {
     }
 
     // -- R02: tela autorizada e nao utilizada sem justificativa --------------
-    if (pr.tela_autorizada && !pr.tela_utilizada) {
+    if (pr.tela_autorizada && !pr.tela_utilizada && temDescricao) {
       if (!contemAlgum(pr.descricao_cirurgica, TERMOS_DISPENSA_TELA)) {
         add(
           'R02',
@@ -281,7 +292,7 @@ export function rodarChecklist(ctx: ContextoChecklist): Alerta[] {
 
   // -- R09: dois sitios sem incisoes independentes descritas ----------------
   const sitios = procedimentos.length
-  if (sitios >= 2) {
+  if (sitios >= 2 && temDescricao) {
     const textos = procedimentos.map((p) => p.descricao_cirurgica ?? '').join(' \n ')
     const mencoes = contarOcorrencias(textos, 'incis')
     if (mencoes < sitios) {
@@ -295,6 +306,20 @@ export function rodarChecklist(ctx: ContextoChecklist): Alerta[] {
           '("incisao infraumbilical de 3 cm" / "incisao inguinal direita de 6 cm").',
       )
     }
+  }
+
+  // -- R11: boletim ainda nao anexado ---------------------------------------
+  if (!temDescricao && procedimentos.length > 0) {
+    add(
+      'R11',
+      'atencao',
+      'Nenhuma descricao cirurgica neste atendimento - o boletim ainda nao foi ' +
+        'anexado. As regras que dependem da descricao (retalho, tela e incisoes ' +
+        'independentes) nao foram avaliadas.',
+      0,
+      'Fotografe o boletim de cirurgia deste mesmo atendimento. Ate la o ' +
+        'atendimento pode ser salvo, mas a conferencia esta incompleta.',
+    )
   }
 
   return alertas

@@ -288,3 +288,65 @@ describe('R10 - mes terminando', () => {
     expect(alertas.find((a) => a.regra === 'R10')?.mensagem).toContain('ja fechou')
   })
 })
+
+describe('R11 - documento sem descricao cirurgica', () => {
+  /**
+   * A ficha de internacao e a guia trazem codigos e senhas mas nao tem
+   * descricao cirurgica. Antes disso, um atendimento montado so a partir da
+   * ficha acusava R09 ("dois sitios sem incisoes descritas") - alarme falso
+   * que treina o usuario a ignorar alerta.
+   */
+  const soFicha = () =>
+    rodarChecklist({
+      atendimento: at(),
+      procedimentos: [
+        p({ codigo_tuss: '31009115', senha: 'AL4280002', valor_cobrado: 616 }),
+        p({ codigo_tuss: '31005497', senha: 'AL4280003', valor_cobrado: 1056.78 }),
+      ],
+      tabela: TABELA,
+      hoje: '2026-08-11',
+    })
+
+  it('nao acusa R09 quando nenhum sitio tem descricao', () => {
+    expect(regras(soFicha())).not.toContain('R09')
+  })
+
+  it('avisa que o boletim ainda nao foi anexado', () => {
+    const r11 = soFicha().find((a) => a.regra === 'R11')
+    expect(r11?.severidade).toBe('atencao')
+    expect(r11?.mensagem).toMatch(/boletim ainda nao foi anexado/i)
+  })
+
+  it('nao bloqueia o lote: R11 e atencao, nunca critico', () => {
+    expect(soFicha().filter((a) => a.severidade === 'critico')).toHaveLength(0)
+  })
+
+  it('para de avisar assim que a descricao chega, e volta a cobrar as incisoes', () => {
+    const comBoletim = rodarChecklist({
+      atendimento: at(),
+      procedimentos: [
+        p({
+          codigo_tuss: '31009115',
+          senha: 'AL4280002',
+          valor_cobrado: 616,
+          descricao_cirurgica: 'Incisao inguinal direita de 6 cm.',
+        }),
+        p({ codigo_tuss: '31005497', senha: 'AL4280003', valor_cobrado: 1056.78 }),
+      ],
+      tabela: TABELA,
+      hoje: '2026-08-11',
+    })
+    expect(regras(comBoletim)).not.toContain('R11')
+    expect(regras(comBoletim)).toContain('R09')
+  })
+
+  it('atendimento sem nenhum procedimento nao gera R11', () => {
+    const vazio = rodarChecklist({
+      atendimento: at(),
+      procedimentos: [],
+      tabela: TABELA,
+      hoje: '2026-08-11',
+    })
+    expect(regras(vazio)).not.toContain('R11')
+  })
+})
