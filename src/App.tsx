@@ -1,5 +1,7 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { useDados } from './dados/contexto'
+import { useSessao } from './dados/sessao'
+import Login from './telas/Login'
 import Painel from './telas/Painel'
 import Lancamento from './telas/Lancamento'
 import Captura from './telas/Captura'
@@ -81,6 +83,19 @@ function Mais() {
 
 export default function App() {
   const { modo, carregando, erro } = useDados()
+  const sessao = useSessao()
+
+  if (sessao.carregando) {
+    return <div className="py-24 text-center text-sm text-slate-500">Carregando…</div>
+  }
+
+  if (sessao.exigeLogin && !sessao.email) {
+    return (
+      <div className="mx-auto w-full max-w-3xl px-4">
+        <Login />
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col">

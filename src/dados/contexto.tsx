@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Configuracao, Consulta, Glosa, Paciente, Procedimento } from '@/domain'
 import { CONFIG_PADRAO, hojeISO } from '@/domain'
 import { supabaseConfigurado } from '@/lib/supabase'
+import { explicarErro } from '@/lib/erros'
+import { useSessao } from './sessao'
 import { RepositorioMemoria } from './memoria'
 import { RepositorioSupabase } from './supabase'
 import type { AtendimentoCompleto, DocumentoRegistro, LoteRegistro, Repositorio } from './repositorio'
@@ -57,14 +59,27 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       setConfig(c); setTabela(t); setPacientes(p); setAtendimentos(a)
       setGlosas(g); setConsultas(co); setDocumentos(d); setLotes(l)
     } catch (e) {
-      // Mensagem de erro nunca carrega dado de paciente (§13).
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar os dados.')
+      // Mensagem de erro nunca carrega dado de paciente (§13) - o que vai
+      // para a tela e a causa tecnica, nunca conteudo do banco.
+      setErro(explicarErro(e))
     } finally {
       setCarregando(false)
     }
   }, [])
 
-  useEffect(() => { void recarregar() }, [recarregar])
+  const sessao = useSessao()
+
+  // Sem sessao nao adianta consultar: o banco recusa e a tela so mostraria
+  // erro de permissao por tras da tela de login.
+  const podeCarregar = !sessao.exigeLogin || (!sessao.carregando && sessao.email != null)
+
+  useEffect(() => {
+    if (!podeCarregar) {
+      setCarregando(sessao.carregando)
+      return
+    }
+    void recarregar()
+  }, [podeCarregar, sessao.carregando, recarregar])
 
   const valor = useMemo<EstadoApp>(
     () => ({
