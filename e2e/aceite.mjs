@@ -200,6 +200,23 @@ const galeriaAccept = diagnostico.find((d) => d.accept.includes('application/pdf
 ok(galeriaAccept === 'image/*,application/pdf',
    'captura: accept da galeria sem extensoes soltas, que o iOS trata mal')
 
+// Selecionar de verdade: o sintoma relatado no iPhone foi "abre a galeria,
+// seleciono, volta e nao anexa". Um PNG minimo passa pelo mesmo caminho -
+// onChange, prepararArquivo, redimensionamento e fila.
+const PNG_1PX = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+)
+await inputs.nth(1).setInputFiles({
+  name: 'boletim-teste.png', mimeType: 'image/png', buffer: PNG_1PX,
+})
+await p.waitForTimeout(1500)
+corpo = await p.locator('body').innerText()
+ok(/Ultima selecao: 1 arquivo/i.test(corpo),
+   'captura: a selecao aparece na tela em vez de falhar em silencio')
+ok(/boletim-teste\.png/.test(corpo), 'captura: o arquivo escolhido chega ao app')
+ok(/Fila \(1\)/i.test(corpo), 'captura: o arquivo entra na fila de processamento')
+
 console.log(erros.length ? 'ERROS DE PAGINA:\n' + erros.join('\n') : 'sem erros de pagina')
 await b.close()
 process.exit(falhas > 0 || erros.length > 0 ? 1 : 0)
