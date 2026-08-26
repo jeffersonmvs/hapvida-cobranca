@@ -4,6 +4,7 @@ import { formatarData, vigentesEm } from '@/domain'
 import { repositorio, useDados } from '@/dados/contexto'
 import { extrairZip, formatarTamanho, prepararArquivo } from '@/lib/imagem'
 import { extrairDocumento, iaDisponivel, IaIndisponivel } from '@/ai/cliente'
+import { mensagemDeErro } from '@/lib/erros'
 import { Etiqueta, Secao, Vazio } from '@/componentes/ui'
 
 type Estado = 'preparando' | 'enviando' | 'extraindo' | 'pronto' | 'duplicado' | 'erro'
@@ -15,6 +16,11 @@ interface Item {
   detalhe?: string
   documento_id?: string
   preview?: string
+}
+
+interface Selecao {
+  quantidade: number
+  arquivos: Array<{ nome: string; tipo: string; tamanho: number }>
 }
 
 let n = 0
@@ -44,6 +50,8 @@ const CLASSE_BOTAO_ARQUIVO =
 export default function Captura() {
   const { documentos, tabela, hoje, recarregar } = useDados()
   const [itens, setItens] = useState<Item[]>([])
+  const [selecao, setSelecao] = useState<Selecao | null>(null)
+  const [erroSelecao, setErroSelecao] = useState<string | null>(null)
 
   const atualizar = (chave: string, patch: Partial<Item>) =>
     setItens((is) => is.map((i) => (i.chave === chave ? { ...i, ...patch } : i)))
@@ -131,14 +139,39 @@ export default function Captura() {
   }
 
   const aoSelecionar = async (e: React.ChangeEvent<HTMLInputElement>, ehZip = false) => {
-    const arquivos = Array.from(e.target.files ?? [])
-    e.target.value = ''
-    if (arquivos.length === 0) return
-    if (ehZip) {
-      const extraidos = await extrairZip(arquivos[0])
-      await processar(extraidos)
-    } else {
-      await processar(arquivos)
+    const input = e.target
+    const arquivos = Array.from(input.files ?? [])
+
+    // O que o aparelho realmente entregou. Fica visivel na tela porque, quando
+    // a importacao falha no celular, nao ha console para consultar: sem isso o
+    // sintoma e "selecionei e nao anexou", que nao diz onde quebrou.
+    setSelecao({
+      quantidade: arquivos.length,
+      arquivos: arquivos.map((a) => ({
+        nome: a.name,
+        tipo: a.type || '(sem tipo)',
+        tamanho: a.size,
+      })),
+    })
+    setErroSelecao(null)
+
+    if (arquivos.length === 0) {
+      setErroSelecao('O aparelho voltou sem nenhum arquivo. Tente escolher de novo.')
+      return
+    }
+
+    try {
+      if (ehZip) {
+        await processar(await extrairZip(arquivos[0]))
+      } else {
+        await processar(arquivos)
+      }
+    } catch (err) {
+      setErroSelecao(mensagemDeErro(err, 'Falha ao importar os arquivos.'))
+    } finally {
+      // Zerar o input SO no fim. No iOS, limpar o value enquanto os File ainda
+      // vao ser lidos revoga o acesso ao conteudo, e a leitura falha depois.
+      input.value = ''
     }
   }
 
@@ -174,6 +207,20 @@ export default function Captura() {
             className={CLASSE_INPUT_ARQUIVO} onChange={(e) => aoSelecionar(e, true)} />
         </label>
       </div>
+
+      {(selecao || erroSelecao) && (
+        <div className="mt-3 rounded-xl border border-line bg-surface p-3 text-xs">
+          <div className="mb-1 font-medium text-slate-300">
+            Ultima selecao: {selecao?.quantidade ?? 0} arquivo(s)
+          </div>
+          {selecao?.arquivos.map((a, i) => (
+            <div key={i} className="truncate text-slate-400">
+              {a.nome} · {a.tipo} · {formatarTamanho(a.tamanho)}
+            </div>
+          ))}
+          {erroSelecao && <div className="mt-1 text-critico">{erroSelecao}</div>}
+        </div>
+      )}
 
       {itens.length > 0 && (
         <Secao titulo={`Fila (${itens.length})`}>
