@@ -350,3 +350,18 @@ describe('R11 - documento sem descricao cirurgica', () => {
     expect(regras(vazio)).not.toContain('R11')
   })
 })
+
+describe('R06 - colecistectomia com dois codigos', () => {
+  it('avisa quando 31005470 e 31005497 estao no mesmo atendimento', () => {
+    const alertas = rodarChecklist({
+      atendimento: at(),
+      procedimentos: [
+        p({ codigo_tuss: '31005497', senha: 'A1', valor_cobrado: 1056.78 }),
+        p({ codigo_tuss: '31005470', senha: 'A2', valor_cobrado: 1056.78 }),
+      ],
+      tabela: TABELA,
+      hoje: '2026-08-11',
+    })
+    expect(regras(alertas)).toContain('R06')
+  })
+})

@@ -141,3 +141,46 @@ describe('calcularConsultas', () => {
     expect(r.valor).toBe(720)
   })
 })
+
+describe('colecistectomia: COM e SEM colangiografia pagam igual', () => {
+  /**
+   * Decisao do Dr. Jefferson em 26/08/2026: a colecisto paga R$ 1.056,78
+   * independente de haver colangiografia. 31005470 e a mesma cirurgia que
+   * 31005497 - lancar os dois no mesmo ato nao dobra o honorario.
+   */
+  it('regra 4: 31005470 e 31005497 no mesmo ato remuneram apenas um', () => {
+    const r = calcularAtendimento(
+      [
+        p({ codigo_tuss: '31005497', senha: 'A', valor_cobrado: 1056.78 }),
+        p({ codigo_tuss: '31005470', senha: 'B', valor_cobrado: 1056.78 }),
+      ],
+      TABELA,
+      '2026-08-10',
+    )
+    expect(r.itens.filter((i) => i.remunerado)).toHaveLength(1)
+    expect(r.total_previsto).toBe(1056.78)
+  })
+
+  it('abate na ordem inversa tambem - equivalencia nao depende de quem veio antes', () => {
+    const r = calcularAtendimento(
+      [
+        p({ codigo_tuss: '31005470', senha: 'A', valor_cobrado: 1056.78 }),
+        p({ codigo_tuss: '31005497', senha: 'B', valor_cobrado: 1056.78 }),
+      ],
+      TABELA,
+      '2026-08-10',
+    )
+    expect(r.itens.filter((i) => i.remunerado)).toHaveLength(1)
+    expect(r.total_previsto).toBe(1056.78)
+  })
+
+  it('sozinho, 31005470 e remunerado normalmente', () => {
+    const r = calcularAtendimento(
+      [p({ codigo_tuss: '31005470', senha: 'A', valor_cobrado: 1056.78 })],
+      TABELA,
+      '2026-08-10',
+    )
+    expect(r.itens.filter((i) => i.remunerado)).toHaveLength(1)
+    expect(r.total_previsto).toBe(1056.78)
+  })
+})

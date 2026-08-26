@@ -4,13 +4,19 @@ import type { Procedimento } from '../tipos'
 export const TABELA: Procedimento[] = [
   {
     codigo_tuss: '31005497',
-    descricao: 'Colecistectomia videolaparoscopica sem colangiografia',
+    descricao: 'Colecistectomia videolaparoscopica (com ou sem colangiografia)',
     valor_cobrar: 1056.78, valor_pago: 1056.78, glosa_recorrente: 0,
     confianca: 'confirmado', equivalente_a: '43050200', vigencia_inicio: '2026-01-01',
   },
   {
     codigo_tuss: '43050200',
     descricao: 'Colecistectomia videolaparoscopica (equivalente ao 31005497)',
+    valor_cobrar: 1056.78, valor_pago: 1056.78, glosa_recorrente: 0,
+    confianca: 'confirmado', equivalente_a: '31005497', vigencia_inicio: '2026-01-01',
+  },
+  {
+    codigo_tuss: '31005470',
+    descricao: 'Colecistectomia COM colangiografia por video',
     valor_cobrar: 1056.78, valor_pago: 1056.78, glosa_recorrente: 0,
     confianca: 'confirmado', equivalente_a: '31005497', vigencia_inicio: '2026-01-01',
   },
