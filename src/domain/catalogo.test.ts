@@ -4,8 +4,8 @@ import { resolverValor } from './honorarios'
 import { TABELA } from './__fixtures__/tabela'
 
 describe('catalogo de procedimentos do servico', () => {
-  it('traz as 23 linhas de codigo da planilha de cirurgia eletiva', () => {
-    expect(CATALOGO_ELETIVA).toHaveLength(23)
+  it('traz os 24 codigos: 23 da planilha do servico mais o 30101913 do aviso', () => {
+    expect(CATALOGO_ELETIVA).toHaveLength(24)
   })
 
   it('nao repete codigo: rotulos que dividem o mesmo codigo ficam juntos', () => {
@@ -14,8 +14,28 @@ describe('catalogo de procedimentos do servico', () => {
   })
 
   it('agrupa COM e SEM colangiografia sob 31005497, como na planilha', () => {
-    expect(nomeNoCatalogo('31005497')).toMatch(/COM colangiografia/)
-    expect(nomeNoCatalogo('31005497')).toMatch(/SEM colangiografia/)
+    const item = CATALOGO_ELETIVA.find((i) => i.codigo === '31005497')
+    expect(item?.nomes.join(' ')).toMatch(/COM colangiografia/)
+    expect(item?.nomes.join(' ')).toMatch(/SEM colangiografia/)
+  })
+
+  /**
+   * Numa glosa quem decide e o texto da operadora, nao o rotulo interno. Onde
+   * ha descricao oficial confirmada por documento dela, e essa que aparece.
+   */
+  it('prefere a descricao oficial da operadora quando ela existe', () => {
+    expect(nomeNoCatalogo('31005497')).toBe(
+      'Colecistectomia sem colangiografia por videolaparoscopia',
+    )
+    expect(nomeNoCatalogo('31009115')).toBe('Herniorrafia inguinal - unilateral')
+  })
+
+  it('cai no rotulo do servico quando a operadora nao confirmou o codigo', () => {
+    expect(nomeNoCatalogo('31003281')).toBe('Enterectomia')
+  })
+
+  it('30101913 entrou no catalogo: a operadora o contempla e ele ja tem valor', () => {
+    expect(nomeNoCatalogo('30101913')).toBe('TU partes moles - exerese')
   })
 
   it('devolve null para codigo que nao existe', () => {

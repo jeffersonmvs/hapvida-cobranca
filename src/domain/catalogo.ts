@@ -17,14 +17,23 @@
 
 export interface ItemCatalogo {
   codigo: string
+  /** Como o procedimento e chamado na planilha do servico. */
   nomes: string[]
+  /**
+   * Descricao oficial da HAPVIDA, quando confirmada por documento da propria
+   * operadora. E o texto que vale numa discussao de glosa: numa divergencia
+   * entre o rotulo interno e este, quem decide e a operadora. Confirmados no
+   * aviso institucional "Codigos de procedimento contemplados nessa onda"
+   * (26/08/2026).
+   */
+  nomeOperadora?: string
 }
 
 /** Cirurgia eletiva: 25 linhas da planilha, agrupadas por codigo. */
 export const CATALOGO_ELETIVA: ItemCatalogo[] = [
-  { codigo: '31005497', nomes: ['Colecistectomia por videolaparoscopia (COM colangiografia)', 'Colecistectomia por videolaparoscopia (SEM colangiografia)'] },
+  { codigo: '31005497', nomes: ['Colecistectomia por videolaparoscopia (COM colangiografia)', 'Colecistectomia por videolaparoscopia (SEM colangiografia)'], nomeOperadora: 'Colecistectomia sem colangiografia por videolaparoscopia' },
   { codigo: '30908094', nomes: ['Fistula arteriovenosa dos membros'] },
-  { codigo: '30913012', nomes: ['Disseccao de veia para colocacao de cateter'] },
+  { codigo: '30913012', nomes: ['Disseccao de veia para colocacao de cateter'], nomeOperadora: 'Disseccao de veia para colocacao de cateter central NPP ou QT' },
   { codigo: '31003290', nomes: ['Cirurgia de abaixamento de colon (qualquer tecnica)', 'Entero-anastomose'] },
   { codigo: '31003680', nomes: ['Cirurgia de abaixamento de colon por videolaparoscopia'] },
   { codigo: '31005039', nomes: ['Anastomose biliodigestiva intra-hepatica'] },
@@ -41,10 +50,13 @@ export const CATALOGO_ELETIVA: ItemCatalogo[] = [
   { codigo: '31009107', nomes: ['Herniorrafia incisional'] },
   { codigo: '31009050', nomes: ['Correcao cirurgica da diastase dos retos abdominais'] },
   { codigo: '30914043', nomes: ['Linfadenectomia'] },
-  { codigo: '31009115', nomes: ['Hernia inguinal'] },
+  { codigo: '31009115', nomes: ['Hernia inguinal'], nomeOperadora: 'Herniorrafia inguinal - unilateral' },
   { codigo: '40202283', nomes: ['Gastrostomia endoscopica'] },
-  { codigo: '31009166', nomes: ['Hernia umbilical'] },
+  { codigo: '31009166', nomes: ['Hernia umbilical'], nomeOperadora: 'Herniorrafia umbilical' },
   { codigo: '31009093', nomes: ['Hernia epigastrica'] },
+  // Nao consta na planilha do servico, mas a operadora o contempla no aviso
+  // de 26/08/2026 e ele ja tem valor na tabela de honorarios.
+  { codigo: '30101913', nomes: ['Exerese de tumor de partes moles'], nomeOperadora: 'TU partes moles - exerese' },
 ]
 
 /**
@@ -72,5 +84,6 @@ export const CATALOGO_PQA: string[] = [
 /** Nome do procedimento no catalogo, ou null se o codigo nao existe la. */
 export function nomeNoCatalogo(codigo: string): string | null {
   const item = CATALOGO_ELETIVA.find((i) => i.codigo === codigo)
-  return item ? item.nomes.join(' / ') : null
+  if (!item) return null
+  return item.nomeOperadora ?? item.nomes.join(' / ')
 }

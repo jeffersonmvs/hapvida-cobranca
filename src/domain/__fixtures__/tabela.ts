@@ -4,7 +4,7 @@ import type { Procedimento } from '../tipos'
 export const TABELA: Procedimento[] = [
   {
     codigo_tuss: '31005497',
-    descricao: 'Colecistectomia videolaparoscopica (com ou sem colangiografia)',
+    descricao: 'Colecistectomia sem colangiografia por videolaparoscopia',
     valor_cobrar: 1056.78, valor_pago: 1056.78, glosa_recorrente: 0,
     confianca: 'confirmado', equivalente_a: '43050200', vigencia_inicio: '2026-01-01',
   },
@@ -22,13 +22,13 @@ export const TABELA: Procedimento[] = [
   },
   {
     codigo_tuss: '31009115',
-    descricao: 'Hernioplastia inguinal unilateral',
+    descricao: 'Herniorrafia inguinal - unilateral',
     valor_cobrar: 280.0, valor_pago: 192.0, glosa_recorrente: 88.0,
     confianca: 'confirmado', vigencia_inicio: '2026-01-01',
   },
   {
     codigo_tuss: '31009166',
-    descricao: 'Hernioplastia umbilical',
+    descricao: 'Herniorrafia umbilical',
     valor_cobrar: 148.0, valor_pago: 148.0, glosa_recorrente: 0,
     confianca: 'confirmado', exige_tela: true, vigencia_inicio: '2026-01-01',
   },
