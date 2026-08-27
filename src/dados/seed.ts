@@ -7,11 +7,11 @@ import type { AtendimentoCompleto } from './repositorio'
  * Ao mudar valores, mudar NOS DOIS lugares - ou melhor, criar nova vigencia.
  */
 export const TABELA_HONORARIOS: Procedimento[] = [
-  { codigo_tuss: '31005497', descricao: 'Colecistectomia videolaparoscopica (com ou sem colangiografia)', valor_cobrar: 1056.78, valor_pago: 1056.78, glosa_recorrente: 0, confianca: 'confirmado', equivalente_a: '43050200', vigencia_inicio: '2026-01-01' },
+  { codigo_tuss: '31005497', descricao: 'Colecistectomia sem colangiografia por videolaparoscopia', valor_cobrar: 1056.78, valor_pago: 1056.78, glosa_recorrente: 0, confianca: 'confirmado', equivalente_a: '43050200', vigencia_inicio: '2026-01-01' },
   { codigo_tuss: '43050200', descricao: 'Colecistectomia videolaparoscopica (equivalente ao 31005497)', valor_cobrar: 1056.78, valor_pago: 1056.78, glosa_recorrente: 0, confianca: 'confirmado', equivalente_a: '31005497', vigencia_inicio: '2026-01-01' },
   { codigo_tuss: '31005470', descricao: 'Colecistectomia COM colangiografia por video', valor_cobrar: 1056.78, valor_pago: 1056.78, glosa_recorrente: 0, confianca: 'confirmado', equivalente_a: '31005497', observacao: 'Mesma cirurgia do 31005497, mesmo valor. O codigo usado pelo servico e o 31005497.', vigencia_inicio: '2026-01-01' },
-  { codigo_tuss: '31009115', descricao: 'Hernioplastia inguinal unilateral', valor_cobrar: 280, valor_pago: 192, glosa_recorrente: 88, confianca: 'confirmado', observacao: 'Glosa recorrente de R$ 88,00 desde fev/2026.', vigencia_inicio: '2026-01-01' },
-  { codigo_tuss: '31009166', descricao: 'Hernioplastia umbilical', valor_cobrar: 148, valor_pago: 148, glosa_recorrente: 0, confianca: 'confirmado', exige_tela: true, vigencia_inicio: '2026-01-01' },
+  { codigo_tuss: '31009115', descricao: 'Herniorrafia inguinal - unilateral', valor_cobrar: 280, valor_pago: 192, glosa_recorrente: 88, confianca: 'confirmado', observacao: 'Glosa recorrente de R$ 88,00 desde fev/2026.', vigencia_inicio: '2026-01-01' },
+  { codigo_tuss: '31009166', descricao: 'Herniorrafia umbilical', valor_cobrar: 148, valor_pago: 148, glosa_recorrente: 0, confianca: 'confirmado', exige_tela: true, vigencia_inicio: '2026-01-01' },
   { codigo_tuss: '31009093', descricao: 'Hernioplastia epigastrica', valor_cobrar: 148, valor_pago: 148, glosa_recorrente: 0, confianca: 'confirmado', vigencia_inicio: '2026-01-01' },
   { codigo_tuss: '31009107', descricao: 'Herniorrafia incisional', valor_cobrar: 280, valor_pago: 208, glosa_recorrente: 72, confianca: 'provavel', vigencia_inicio: '2026-01-01' },
   { codigo_tuss: '30101913', descricao: 'TU partes moles - exerese', valor_cobrar: 100, valor_pago: 100, glosa_recorrente: 0, confianca: 'confirmado', pequena_cirurgia: true, vigencia_inicio: '2026-01-01' },
