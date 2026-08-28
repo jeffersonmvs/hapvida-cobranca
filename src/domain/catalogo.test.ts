@@ -4,8 +4,16 @@ import { resolverValor } from './honorarios'
 import { TABELA } from './__fixtures__/tabela'
 
 describe('catalogo de procedimentos do servico', () => {
-  it('traz os 24 codigos: 23 da planilha do servico mais o 30101913 do aviso', () => {
-    expect(CATALOGO_ELETIVA).toHaveLength(24)
+  it('traz 33 codigos: 23 da planilha, 1 do aviso e 9 lidos dos contratos', () => {
+    expect(CATALOGO_ELETIVA).toHaveLength(33)
+  })
+
+  it('conhece o 31009255, que substituiu o marcador SEM-TUSS-01', () => {
+    expect(nomeNoCatalogo('31009255')).toMatch(/Reconstrucao da parede abdominal/)
+  })
+
+  it('conhece o 31005470, a colecistectomia COM colangiografia do contrato', () => {
+    expect(nomeNoCatalogo('31005470')).toMatch(/com colangiografia/i)
   })
 
   it('nao repete codigo: rotulos que dividem o mesmo codigo ficam juntos', () => {

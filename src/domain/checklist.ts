@@ -5,6 +5,9 @@ import type {
   ProcedimentoRealizado,
 } from './tipos'
 import { vigenteEm } from './honorarios'
+
+/** Clausula 7.6 do contrato: conta apresentada depois disso nao e devida. */
+export const PRAZO_APRESENTACAO_DIAS = 95
 import {
   contarOcorrencias,
   contemAlgum,
@@ -77,6 +80,7 @@ export const REGRAS: RegraChecklist[] = [
   { id: 'R08', titulo: 'Divergencia entre boletim e ficha', severidade: 'atencao' },
   { id: 'R09', titulo: 'Dois sitios sem incisoes independentes descritas', severidade: 'atencao' },
   { id: 'R11', titulo: 'Boletim ainda nao anexado', severidade: 'atencao' },
+  { id: 'R12', titulo: 'Prazo de 95 dias para apresentar a conta', severidade: 'critico' },
   { id: 'R10', titulo: 'A faturar com o mes terminando', severidade: 'atencao' },
 ]
 
@@ -306,6 +310,36 @@ export function rodarChecklist(ctx: ContextoChecklist): Alerta[] {
           '("incisao infraumbilical de 3 cm" / "incisao inguinal direita de 6 cm").',
       )
     }
+  }
+
+  // -- R12: prazo contratual de 95 dias para apresentar a conta -------------
+  //
+  // Clausula 7.6 do contrato Medisa: "A CONTRATANTE fica desobrigada do
+  // pagamento de contas apresentadas em periodo superior a 95 (noventa e cinco)
+  // dias da data do atendimento." Passado esse prazo o dinheiro nao volta por
+  // recurso - simplesmente nao e devido. Por isso e critico, e nao aviso.
+  const diasDesdeAtendimento = diffDias(data, hoje)
+  if (diasDesdeAtendimento > PRAZO_APRESENTACAO_DIAS) {
+    add(
+      'R12',
+      'critico',
+      `Atendimento de ${data} esta ha ${diasDesdeAtendimento} dias sem ser ` +
+        `faturado. O contrato desobriga a operadora de pagar contas ` +
+        `apresentadas apos ${PRAZO_APRESENTACAO_DIAS} dias (clausula 7.6).`,
+      0,
+      'Confira se esta conta ja foi apresentada por outra via. Se nao foi, ' +
+        'o valor provavelmente nao e mais exigivel - registre para nao repetir.',
+    )
+  } else if (diasDesdeAtendimento > PRAZO_APRESENTACAO_DIAS - 30) {
+    add(
+      'R12',
+      'atencao',
+      `Faltam ${PRAZO_APRESENTACAO_DIAS - diasDesdeAtendimento} dias para o ` +
+        `prazo de ${PRAZO_APRESENTACAO_DIAS} dias de apresentacao da conta ` +
+        `(clausula 7.6). Depois disso a operadora nao e obrigada a pagar.`,
+      0,
+      'Feche o lote deste atendimento antes do prazo.',
+    )
   }
 
   // -- R11: boletim ainda nao anexado ---------------------------------------

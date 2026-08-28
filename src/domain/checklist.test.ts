@@ -365,3 +365,52 @@ describe('R06 - colecistectomia com dois codigos', () => {
     expect(regras(alertas)).toContain('R06')
   })
 })
+
+describe('R12 - prazo de 95 dias para apresentar a conta', () => {
+  /**
+   * Clausula 7.6 do contrato Medisa: conta apresentada mais de 95 dias depois
+   * do atendimento nao e devida. Nao ha recurso possivel - por isso e critico,
+   * ao contrario da glosa, que ainda da para recorrer em 30 dias.
+   */
+  const emDias = (dias: number) => {
+    const d = new Date(Date.UTC(2026, 7, 11))
+    d.setUTCDate(d.getUTCDate() + dias)
+    return d.toISOString().slice(0, 10)
+  }
+
+  const rodar = (hoje: string) =>
+    rodarChecklist({
+      atendimento: at({ data: '2026-08-11' }),
+      procedimentos: [
+        p({
+          codigo_tuss: '31009115',
+          senha: 'A1',
+          valor_cobrado: 280,
+          descricao_cirurgica: 'Incisao inguinal direita de 6 cm.',
+        }),
+      ],
+      tabela: TABELA,
+      hoje,
+    })
+
+  it('nao diz nada quando a conta ainda esta folgada no prazo', () => {
+    expect(regras(rodar(emDias(10)))).not.toContain('R12')
+  })
+
+  it('avisa quando faltam menos de 30 dias', () => {
+    const r12 = rodar(emDias(80)).find((a) => a.regra === 'R12')
+    expect(r12?.severidade).toBe('atencao')
+    expect(r12?.mensagem).toMatch(/Faltam 15 dias/)
+  })
+
+  it('vira critico depois dos 95 dias, porque o valor deixa de ser exigivel', () => {
+    const r12 = rodar(emDias(96)).find((a) => a.regra === 'R12')
+    expect(r12?.severidade).toBe('critico')
+    expect(r12?.mensagem).toMatch(/96 dias sem ser faturado/)
+  })
+
+  it('no dia 95 ainda da tempo: o corte e depois, nao no proprio dia', () => {
+    const r12 = rodar(emDias(95)).find((a) => a.regra === 'R12')
+    expect(r12?.severidade).toBe('atencao')
+  })
+})
